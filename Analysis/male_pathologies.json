@@ -1,0 +1,45 @@
+{
+    "Benign vocal cord lesions": {
+        "Reinke O\u0308dem": 7,
+        "Stimmlippenpolyp": 26,
+        "Phonationskno\u0308tchen": 4,
+        "Cyste": 1
+    },
+    "Cancer": {
+        "Leukoplakie": 27,
+        "Stimmlippenkarzinom": 21,
+        "Kehlkopftumor": 4
+    },
+    "Contact pachydermia": {
+        "GERS": 3,
+        "Kontaktpachydermie": 69
+    },
+    "Dystonia": {
+        "Spasmodiche Dysphonie": 22
+    },
+    "Functional Hoarseness": {
+        "Psychogene Dysphonie": 17,
+        "Funktionelle Dysphonie": 36
+    },
+    "Healthy": {
+        "Healthy": 259
+    },
+    "Hyperfunktionelle Dysphonie": {
+        "Hyperfunktionelle Dysphonie": 46
+    },
+    "Inflamation of the voice box": {
+        "Laryngitis": 83
+    },
+    "Old Voice": {
+        "Vox senilis": 13
+    },
+    "Scar on the vocal cords after surgery": {
+        "Chordektomie": 56,
+        "Synechie": 2,
+        "Frontolaterale Teilressktion": 25
+    },
+    "Weakness of vocal cords": {
+        "Rekurrensparese": 74,
+        "Zentral-laryngale Bewegungsstorung": 9
+    }
+}
