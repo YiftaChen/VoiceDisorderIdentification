@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+from cProfile import label
 from logging import root
 import os
 import torch
@@ -9,13 +10,16 @@ from torch.utils.data import Dataset, DataLoader
 from scipy.io import wavfile
 import scipy.io
 from tqdm import tqdm
-from torchaudio.transforms import ToTensor
-# from transform import ToTensor
+from torchaudio.transforms import MelSpectrogram,Spectrogram,MelScale
+import torch.nn as nn
+from transform import ToTensor,SwitchDim,ToOneHot
+
+default_transforms = nn.Sequential(ToTensor(),MelSpectrogram())
 
 class SvdExtendedVoiceDataset(Dataset):
     """Saarbruken blah blah"""
 
-    def __init__(self, root_dir, data_transform=None,label_transform=None, class_definitions:dict=None):
+    def __init__(self, root_dir, data_transform=default_transforms,label_transform=None, class_definitions=None):
         self.root_dir = root_dir
         self.data_transform = data_transform
         self.label_transform = label_transform
@@ -39,13 +43,17 @@ class SvdExtendedVoiceDataset(Dataset):
             data = self.data_transform(data)
         if self.label_transform != None:
             label = self.label_transform(classification)
-        return {'data':data, 'sampling_rate':samplerate,'classification':classification}
-
-# def forward(self,sample):
-#     data,sample_rate,label = sample...
+        return {'data':data, 'sampling_rate':samplerate,'classification':label}
 
 if __name__ == "__main__":
-    dataset = SvdExtendedVoiceDataset(r"/Users/yiftachedelstain/Development/Data",data_transform=ToTensor())
+    label_transforms = nn.Sequential(ToOneHot())
+    dataset = SvdExtendedVoiceDataset(r"/Users/yiftachedelstain/Development/Data",label_transform=label_transforms)
+    loader = DataLoader(
+        dataset,
+        batch_size=2,
+        shuffle=False,
+        num_workers=2
+    )
+
     for idx,item in enumerate(tqdm(dataset)):
-        # print(item)
         print(item)
