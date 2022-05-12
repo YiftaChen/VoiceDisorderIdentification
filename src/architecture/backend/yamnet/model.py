@@ -1,6 +1,5 @@
 import os.path as osp
 from unicodedata import name
-import yaml
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -158,13 +157,6 @@ class YAMNet(nn.Module):
         return x
 
 
-def yamnet_category_metadata():
-    cat_meta_file = osp.join(
-        osp.dirname(osp.realpath(__file__)), 'yamnet_category_meta.yml'
-    )
-    with open(cat_meta_file) as f:
-        cat_meta = yaml.safe_load(f)
-    return cat_meta
 class Identity(nn.Module):
     def __init__(self):
         super(Identity, self).__init__()
