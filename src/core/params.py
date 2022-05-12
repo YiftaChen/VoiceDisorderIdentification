@@ -5,7 +5,21 @@ vggish params are retrieved from:
 yamnet params are retrieved from:
     https://github.com/tensorflow/models/blob/bd488858d610e44df69da6f89277e9de8a03722c/research/audioset/yamnet/params.py
 '''
+import json
 
+PathologiesToIndex = {
+    "Healthy": 0,
+    "Cancer": 1,
+    "Contact pachydermia": 2,
+    "Dystonia": 3,
+    "Functional Hoarseness": 4,
+    "Benign vocal cord lesions": 5,
+    "Hyperfunktionelle Dysphonie": 6,
+    "Inflamation of the voice box": 7,
+    "Old Voice": 8,
+    "Scar on the vocal cords after surgery": 9,
+    "Weakness of vocal cords": 10
+}
 
 class CommonParams():
     # for STFT
@@ -28,7 +42,9 @@ class CommonParams():
 
     # num of data loading threads
     NUM_LOADERS = 4
-
+    
+    VOICE_SAMPLE_MIN_LENGTH = 0.96
+    SVD_SAMPLE_RATE = 50000
 
 class VGGishParams():
     # Copyright 2017 The TensorFlow Authors All Rights Reserved.

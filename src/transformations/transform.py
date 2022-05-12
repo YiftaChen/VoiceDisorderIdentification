@@ -21,7 +21,7 @@ class ToTensor(nn.Module):
 
 class Truncate(nn.Module):
     def __init__(self,N):
-        self.N=N
+        self.N=int(N)
     def __call__(self, sample):
         return sample[:self.N].reshape(1,-1)
 
@@ -52,7 +52,7 @@ class WaveformToInput(torch.nn.Module):
 
     #TODO change hard coded number to configuration
     def __call__(self, waveform):
-        res = self.wavform_to_log_mel(waveform=waveform,sample_rate=50000)[0]
+        res = self.wavform_to_log_mel(waveform=waveform,sample_rate=CommonParams.SVD_SAMPLE_RATE)[0]
         shape = res.shape
         return res[0].reshape(*shape[1:])
     #     '''
