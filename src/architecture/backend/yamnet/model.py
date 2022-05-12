@@ -1,10 +1,10 @@
 import os.path as osp
-from unicodedata import name
+import yaml
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import hub
-from params import YAMNetParams
+from architecture.backend.yamnet.params import YAMNetParams
 
 __all__ = ['yamnet', 'yamnet_category_metadata']
 
@@ -157,13 +157,13 @@ class YAMNet(nn.Module):
         return x
 
 
-class Identity(nn.Module):
-    def __init__(self):
-        super(Identity, self).__init__()
-        
-    def forward(self, x):
-        return x
-
+    class Identity(nn.Module):
+        def __init__(self):
+            super(Identity, self).__init__()
+            
+        def forward(self, x):
+            return x
+            
 def yamnet(pretrained=True):
     model = YAMNet()
     if pretrained:
@@ -171,7 +171,11 @@ def yamnet(pretrained=True):
         model.load_state_dict(state_dict)
     return model
 
-if __name__=="__main__":
-    yamnet_model = yamnet()
-    yamnet_model.classifier = Identity()
-    print(yamnet_model)
+
+def yamnet_category_metadata():
+    cat_meta_file = osp.join(
+        osp.dirname(osp.realpath(__file__)), 'yamnet_category_meta.yml'
+    )
+    with open(cat_meta_file) as f:
+        cat_meta = yaml.safe_load(f)
+    return cat_meta
