@@ -47,6 +47,8 @@ class WaveformToInput(torch.nn.Module):
         window_size_in_frames = int(round(
             CommonParams.PATCH_WINDOW_IN_SECONDS / CommonParams.STFT_HOP_LENGTH_SECONDS
         ))
+        print(CommonParams.PATCH_WINDOW_IN_SECONDS)
+
         num_chunks = x.shape[0] // window_size_in_frames
 
         # reshape into chunks of non-overlapping sliding window

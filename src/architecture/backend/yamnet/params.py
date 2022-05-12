@@ -21,6 +21,7 @@ class CommonParams():
 
     # convert input audio to segments
     PATCH_WINDOW_IN_SECONDS = 0.96
+    # PATCH_WINDOW_IN_SECONDS = 0.48
 
     # largest feedforward chunk size at test time
     VGGISH_CHUNK_SIZE = 128
@@ -116,7 +117,8 @@ class YAMNetParams():
     LOG_OFFSET = 0.001
     PATCH_WINDOW_SECONDS = 0.96
     PATCH_HOP_SECONDS = 0.48
-
+    # PATCH_WINDOW_SECONDS = 0.48
+    # PATCH_HOP_SECONDS = 0.24
     PATCH_FRAMES = int(round(PATCH_WINDOW_SECONDS / STFT_HOP_SECONDS))
     PATCH_BANDS = MEL_BANDS
     NUM_CLASSES = 521
