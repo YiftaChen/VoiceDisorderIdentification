@@ -20,8 +20,7 @@ class CommonParams():
     LOG_OFFSET = 0.001  # NOTE 0.01 for vggish, and 0.001 for yamnet
 
     # convert input audio to segments
-    PATCH_WINDOW_IN_SECONDS = 0.96
-    # PATCH_WINDOW_IN_SECONDS = 0.48
+    PATCH_WINDOW_IN_SECONDS = 0.48
 
     # largest feedforward chunk size at test time
     VGGISH_CHUNK_SIZE = 128
@@ -115,10 +114,9 @@ class YAMNetParams():
     MEL_MIN_HZ = 125
     MEL_MAX_HZ = 7500
     LOG_OFFSET = 0.001
-    PATCH_WINDOW_SECONDS = 0.96
-    PATCH_HOP_SECONDS = 0.48
-    # PATCH_WINDOW_SECONDS = 0.48
-    # PATCH_HOP_SECONDS = 0.24
+    PATCH_WINDOW_SECONDS = 0.48
+    PATCH_HOP_SECONDS = 0.2
+
     PATCH_FRAMES = int(round(PATCH_WINDOW_SECONDS / STFT_HOP_SECONDS))
     PATCH_BANDS = MEL_BANDS
     NUM_CLASSES = 521
