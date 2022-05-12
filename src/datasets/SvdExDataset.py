@@ -1,25 +1,19 @@
 from __future__ import print_function, division
-from cProfile import label
-from logging import root
 import os
 import torch
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from scipy.io import wavfile
-import scipy.io
-from tqdm import tqdm
-from torchaudio.transforms import MelSpectrogram,Spectrogram,MelScale
 import torch.nn as nn
-from transform import ToTensor,SwitchDim,ToOneHot
+from transformations import ToTensor,Truncate,ToOneHot,WaveformToInput
+import librosa
 
-default_transforms = nn.Sequential(ToTensor(),MelSpectrogram())
+default_transforms = nn.Sequential(ToTensor(),Truncate(48000),WaveformToInput())
+default_label_transforms = nn.Sequential(ToOneHot())
 
 class SvdExtendedVoiceDataset(Dataset):
     """Saarbruken blah blah"""
 
-    def __init__(self, root_dir, data_transform=default_transforms,label_transform=None, class_definitions=None):
+    def __init__(self, root_dir, data_transform=default_transforms,label_transform=default_label_transforms, class_definitions=None):
         self.root_dir = root_dir
         self.data_transform = data_transform
         self.label_transform = label_transform
@@ -45,15 +39,25 @@ class SvdExtendedVoiceDataset(Dataset):
             label = self.label_transform(classification)
         return {'data':data, 'sampling_rate':samplerate,'classification':label}
 
+class SvdCutOffShort(SvdExtendedVoiceDataset):
+    """Saarbruken blah blah, cut off samples smaller than 0.96"""
+
+    def __init__(self, root_dir, data_transform=default_transforms,label_transform=default_label_transforms, class_definitions=None):
+        super().__init__(root_dir,data_transform,label_transform,class_definitions)
+        self.files = [file for file in self.files if librosa.get_duration(filename=file)>=0.96]
+
+
 if __name__ == "__main__":
-    label_transforms = nn.Sequential(ToOneHot())
-    dataset = SvdExtendedVoiceDataset(r"/Users/yiftachedelstain/Development/Data",label_transform=label_transforms)
+    from tqdm import tqdm
+    from torch.utils.data import DataLoader
+
+    dataset = SvdCutOffShort(r"/Users/yiftachedelstain/Development/Data")
     loader = DataLoader(
         dataset,
-        batch_size=2,
+        batch_size=10,
         shuffle=False,
         num_workers=2
     )
 
-    for idx,item in enumerate(tqdm(dataset)):
-        print(item)
+    for idx,item in enumerate(tqdm(loader)):
+        print(item['data'].shape) 
