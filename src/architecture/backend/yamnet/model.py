@@ -113,6 +113,12 @@ class SeparableConv(nn.Module):
         x = self.pointwise_conv(x)
         return x
 
+class Identity(nn.Module):
+    def __init__(self):
+        super().__init__()
+        
+    def forward(self, x):
+        return x
 
 class YAMNet(nn.Module):
     def __init__(self):
@@ -157,18 +163,19 @@ class YAMNet(nn.Module):
         return x
 
 
-    class Identity(nn.Module):
-        def __init__(self):
-            super(Identity, self).__init__()
+
             
-        def forward(self, x):
-            return x
-            
-def yamnet(pretrained=True):
+def yamnet(pretrained=True,remove_classification_layer=True):
     model = YAMNet()
     if pretrained:
         state_dict = hub.load_state_dict_from_url(ckpt_url, progress=True)
         model.load_state_dict(state_dict)
+        for param in model.parameters():
+            param.requires_grad = False
+
+    if remove_classification_layer:
+        model.classifier = Identity()
+    
     return model
 
 

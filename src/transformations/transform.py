@@ -1,9 +1,29 @@
-import numpy as np
+from random import sample
 import torch
+from torch.nn import functional as F
+import torch.nn as nn
+import numpy as np
 import torchaudio.transforms as ta_trans
-
 from core.params import CommonParams, YAMNetParams
 
+class ToOneHot(nn.Module):
+    def __call__(self, classification):
+        if not isinstance(classification,bool):
+            classification = torch.Tensor([classification]).to(torch.int64)
+            classification = F.one_hot(classification,10).squeeze()
+        return classification
+
+class ToTensor(nn.Module):
+    """Convert ndarrays in sample to Tensors."""
+
+    def __call__(self, sample):
+        return torch.from_numpy(sample).float()
+
+class Truncate(nn.Module):
+    def __init__(self,N):
+        self.N=int(N)
+    def __call__(self, sample):
+        return sample[:self.N].reshape(1,-1)
 
 class WaveformToInput(torch.nn.Module):
     def __init__(self):
@@ -30,33 +50,37 @@ class WaveformToInput(torch.nn.Module):
         # conv kernel. It is the center of the kernel, not the left edge of the
         # kernel that is aligned at the start of the signal.
 
-    def __call__(self, waveform, sample_rate):
-        '''
-        Args:
-            waveform: torch tsr [num_audio_channels, num_time_steps]
-            sample_rate: per second sample rate
-        Returns:
-            batched torch tsr of shape [N, C, T]
-        '''
-        x = waveform.mean(axis=0, keepdims=True)  # average over channels
-        resampler = ta_trans.Resample(sample_rate, CommonParams.TARGET_SAMPLE_RATE)
-        x = resampler(x)
-        x = self.mel_trans_ope(x)
-        x = x.squeeze(dim=0).T  # # [1, C, T] -> [T, C]
+    #TODO change hard coded number to configuration
+    def __call__(self, waveform):
+        res = self.wavform_to_log_mel(waveform=waveform,sample_rate=CommonParams.SVD_SAMPLE_RATE)[0]
+        shape = res.shape
+        return res[0].reshape(*shape[1:])
+    #     '''
+    #     Args:
+    #         waveform: torch tsr [num_audio_channels, num_time_steps]
+    #         sample_rate: per second sample rate
+    #     Returns:
+    #         batched torch tsr of shape [N, C, T]
+    #     '''
+    #     x = waveform.mean(axis=0, keepdims=True)  # average over channels
+    #     resampler = ta_trans.Resample(sample_rate, CommonParams.TARGET_SAMPLE_RATE)
+    #     x = resampler(x)
+    #     x = self.mel_trans_ope(x)
+    #     x = x.squeeze(dim=0).T  # # [1, C, T] -> [T, C]
 
-        window_size_in_frames = int(round(
-            CommonParams.PATCH_WINDOW_IN_SECONDS / CommonParams.STFT_HOP_LENGTH_SECONDS
-        ))
-        print(CommonParams.PATCH_WINDOW_IN_SECONDS)
+    #     window_size_in_frames = int(round(
+    #         CommonParams.PATCH_WINDOW_IN_SECONDS / CommonParams.STFT_HOP_LENGTH_SECONDS
+    #     ))
+    #     print(CommonParams.PATCH_WINDOW_IN_SECONDS)
 
-        num_chunks = x.shape[0] // window_size_in_frames
+    #     num_chunks = x.shape[0] // window_size_in_frames
 
-        # reshape into chunks of non-overlapping sliding window
-        num_frames_to_use = num_chunks * window_size_in_frames
-        x = x[:num_frames_to_use]
-        # [num_chunks, 1, window_size, num_freq]
-        x = x.reshape(num_chunks, 1, window_size_in_frames, x.shape[-1])
-        return x
+    #     # reshape into chunks of non-overlapping sliding window
+    #     num_frames_to_use = num_chunks * window_size_in_frames
+    #     x = x[:num_frames_to_use]
+    #     # [num_chunks, 1, window_size, num_freq]
+    #     x = x.reshape(num_chunks, 1, window_size_in_frames, x.shape[-1])
+    #     return x
 
     def wavform_to_log_mel(self, waveform, sample_rate):
         '''
@@ -101,7 +125,6 @@ class WaveformToInput(torch.nn.Module):
             x = x_output.reshape(patch_hop_num_chunks, 1, window_size_in_frames, x.shape[-1])
             x = torch.tensor(x, dtype=torch.float32)
         return x, spectrogram
-
 
 class VGGishLogMelSpectrogram(ta_trans.MelSpectrogram):
     '''
