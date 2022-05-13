@@ -10,7 +10,7 @@ class Classifier(nn.Module):
         input_dim=1024
         for dimension in dimensions:
             layers += [nn.Linear(input_dim,dimension,bias=False),
-                        nn.BatchNorm1d(num_features=dimension),
+                        # nn.BatchNorm1d(num_features=dimension),
                         nn.ReLU()]
             input_dim = dimension
         layers+=[nn.Linear(input_dim,out_dim,bias=False)]
@@ -19,4 +19,4 @@ class Classifier(nn.Module):
         self.classification = nn.Sequential(self.backend,*layers)
 
     def forward(self,x):
-        return self.classification(x)
+        return self.classification(x).squeeze()

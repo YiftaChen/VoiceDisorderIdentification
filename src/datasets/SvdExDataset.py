@@ -44,10 +44,13 @@ class SvdExtendedVoiceDataset(Dataset):
 
 class SvdCutOffShort(SvdExtendedVoiceDataset):
     """Saarbruken blah blah, cut off samples smaller than 0.96"""
-
-    def __init__(self, root_dir, data_transform=default_transforms,label_transform=default_label_transforms, class_definitions=None,classification_binary=True):
+    def __init__(self, root_dir, data_transform=default_transforms,label_transform=default_label_transforms, class_definitions=None,classification_binary=True,overfit_test = False):
         super().__init__(root_dir,data_transform,label_transform,class_definitions,classification_binary)
+        import random
         self.files = [file for file in self.files if librosa.get_duration(filename=file)>=cfg.VOICE_SAMPLE_MIN_LENGTH]
+        random.shuffle(self.files)
+        if overfit_test:
+            self.files = self.files[:40]
 
 
 if __name__ == "__main__":
