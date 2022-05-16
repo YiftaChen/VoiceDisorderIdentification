@@ -7,22 +7,22 @@ from torch.utils.data import DataLoader
 class Trainer(object):
     def __init__(self,dataset,model,optimizers,critereon,hyper_params) -> None:
         # self.dl = dataloader
-        self.train, self.vald, self.test = self.train_val_test_split(dataset)
+        self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)
        
-        self.train =  DataLoader(
-            self.train,
+        self.train_set =  DataLoader(
+            self.train_set,
             batch_size=hyper_params['train_batch_size'],
             shuffle=True,
             num_workers=hyper_params['num_workers']
         )
-        self.vald =  DataLoader(
-            self.vald,
+        self.val_set =  DataLoader(
+            self.val_set,
             batch_size=hyper_params['vald_batch_size'],
             shuffle=True,
             num_workers=hyper_params['num_workers']
         )
-        self.test =  DataLoader(
-            self.test,
+        self.test_set =  DataLoader(
+            self.test_set,
             batch_size=hyper_params['test_batch_size'],
             shuffle=True,
             num_workers=hyper_params['num_workers']
@@ -42,7 +42,7 @@ class Trainer(object):
         len_vald = len_train_vald - len_train
         return torch.utils.data.random_split(ds, [len_train,len_vald,len_test]) 
 
-    def train_f(self):
+    def train(self):
         train_losses = []
         vald_losses = []
 
@@ -55,7 +55,7 @@ class Trainer(object):
             epoch_accuracies = []
             epoch_precisions = []
             epoch_recalls = []
-            with tqdm(self.train) as t:
+            with tqdm(self.train_set) as t:
                 for idx,sample in enumerate(t):                
                     x = sample['data'].to(device=self.device)
                     y = sample['classification'].float().squeeze().to(device=self.device)
@@ -91,7 +91,7 @@ class Trainer(object):
             vald_recalls = []
 
             vald_loss = 0.0
-            with tqdm(self.vald) as t:
+            with tqdm(self.val_set) as t:
                     for idx,sample in enumerate(t):
                         x = sample['data'].to(device=self.device)
                         y = sample['classification'].float().squeeze().to(device=self.device)
@@ -114,13 +114,13 @@ class Trainer(object):
 
         return self.model,train_losses,vald_loss, train_accuracies,train_precisions,train_recalls,vald_accuracies,vald_precisions,vald_recalls
 
-    def test_f(self,model):
+    def test(self,model):
         test_loss = 0.0
         test_accuracies = []
         test_precisions = []
         test_recalls = []
 
-        with tqdm(self.vald) as t:
+        with tqdm(self.test_set) as t:
                 for idx,sample in enumerate(t):
                     x = sample['data'].to(device=self.device)
                     y = sample['classification'].float().squeeze().to(device=self.device)
