@@ -21,7 +21,7 @@ class SvdExtendedVoiceDataset(Dataset):
         self.class_definitions=class_definitions if class_definitions!= None else PathologiesToIndex# Placeholder for actual definitions
         self.files = []
         for root, dirs, files in os.walk(root_dir):
-            self.files += [os.path.join(root,f) for f in files if f.endswith('.wav')]
+            self.files += [os.path.join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
             # assert len(files) == 0 or (len(files) != 0 and 
         assert len(self.files) > 0,"Directory should not be empty"
     def __len__(self):

@@ -32,7 +32,8 @@ class Trainer(object):
         self.optimizers = optimizers
         self.critereon=critereon
         self.hp = hyper_params
-    
+        self.device = torch.device('cuda') if torch.cuda.is_available() else "cpu"
+        self.model = self.model.to(device=self.device)
     def train_val_test_split(self,ds):
         ds_len =  len(ds)
         len_test = math.floor(ds_len*0.2)
@@ -48,16 +49,16 @@ class Trainer(object):
         train_accuracies = []
         train_precisions = []
         train_recalls = []
-
+        
         for epoch in range(self.hp['epochs']):
             running_loss = 0.0
             epoch_accuracies = []
             epoch_precisions = []
             epoch_recalls = []
             with tqdm(self.train) as t:
-                for idx,sample in enumerate(t):
-                    x = sample['data']
-                    y = sample['classification'].float().squeeze()
+                for idx,sample in enumerate(t):                
+                    x = sample['data'].to(device=self.device)
+                    y = sample['classification'].float().squeeze().to(device=self.device)
                     self.optimizers.zero_grad()
                     outputs = self.model(x)
                     loss = self.critereon(outputs,y)
@@ -92,8 +93,8 @@ class Trainer(object):
             vald_loss = 0.0
             with tqdm(self.vald) as t:
                     for idx,sample in enumerate(t):
-                        x = sample['data']
-                        y = sample['classification'].float().squeeze()                        
+                        x = sample['data'].to(device=self.device)
+                        y = sample['classification'].float().squeeze().to(device=self.device)
                         with torch.no_grad():
                             outputs = self.model(x)
                             loss = self.critereon(outputs,y)
@@ -121,8 +122,8 @@ class Trainer(object):
 
         with tqdm(self.vald) as t:
                 for idx,sample in enumerate(t):
-                    x = sample['data']
-                    y = sample['classification'].float().squeeze()
+                    x = sample['data'].to(device=self.device)
+                    y = sample['classification'].float().squeeze().to(device=self.device)
                     with torch.no_grad():
                         outputs = model(x)
                         loss = self.critereon(outputs,y)
