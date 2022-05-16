@@ -55,8 +55,8 @@ class Trainer(object):
             epoch_accuracies = []
             epoch_precisions = []
             epoch_recalls = []
-            with tqdm(self.train_set) as t:
-                for idx,sample in enumerate(t):                
+            with tqdm(self.train_set) as pbar:
+                for idx,sample in enumerate(pbar):                
                     x = sample['data'].to(device=self.device)
                     y = sample['classification'].float().squeeze().to(device=self.device)
                     self.optimizers.zero_grad()
@@ -79,12 +79,13 @@ class Trainer(object):
                     epoch_precisions += [precision]
                     epoch_recalls += [recall]
 
-                    t.set_description(f"train epoch {epoch}, train loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")
-                epoch_accuracy = sum(epoch_accuracies)/len(epoch_accuracies)
-                epoch_precision = sum(epoch_precisions)/len(epoch_precisions)
-                epoch_recall = sum(epoch_recalls)/len(epoch_recalls)
-                t.set_description(f"train epoch {epoch}, train loss:{running_loss} , Accuracy:{epoch_accuracy*100}%, Precision:{epoch_precision*100}%, Recall:{epoch_recall*100}%")
-
+                    pbar.set_description(f"train epoch {epoch}, train loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")
+                    if idx == len(self.train_set)-1 :
+                        epoch_accuracy = sum(epoch_accuracies)/len(epoch_accuracies)
+                        epoch_precision = sum(epoch_precisions)/len(epoch_precisions)
+                        epoch_recall = sum(epoch_recalls)/len(epoch_recalls)
+                        pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%, Mean Precision:{epoch_precision*100}%, Mean Recall:{epoch_recall*100}%")
+                
             train_losses += [running_loss]
             vald_accuracies = []
             vald_precisions = []
