@@ -3,12 +3,13 @@ import torch
 from tqdm import tqdm
 import math
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 class Trainer(object):
     def __init__(self,dataset,model,optimizers,critereon,hyper_params) -> None:
         # self.dl = dataloader
         self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)
-       
+        self.writer = SummaryWriter("logs/")
         self.train_set =  DataLoader(
             self.train_set,
             batch_size=hyper_params['train_batch_size'],
@@ -85,7 +86,12 @@ class Trainer(object):
                         epoch_precision = sum(epoch_precisions)/len(epoch_precisions)
                         epoch_recall = sum(epoch_recalls)/len(epoch_recalls)
                         pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%, Mean Precision:{epoch_precision*100}%, Mean Recall:{epoch_recall*100}%")
-                
+
+                    self.writer.add_scalar('Loss/train',loss.item(),idx)
+                    self.writer.add_scalar('Accuracy/train',accuracy,idx)
+                    self.writer.add_scalar('Precision/train',precision,idx)
+                    self.writer.add_scalar('Recall/train',recall,idx)
+
             train_losses += [running_loss]
             vald_accuracies = []
             vald_precisions = []
@@ -108,7 +114,10 @@ class Trainer(object):
                             vald_accuracies += [accuracy]
                             vald_precisions += [precision]
                             vald_recalls += [recall]
-
+                        self.writer.add_scalar('Loss/validation',loss.item(),idx)
+                        self.writer.add_scalar('Accuracy/validation',accuracy,idx)
+                        self.writer.add_scalar('Precision/validation',precision,idx)
+                        self.writer.add_scalar('Recall/validation',recall,idx)
                         t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")
             
             vald_losses += [vald_loss]
@@ -137,6 +146,11 @@ class Trainer(object):
                         test_accuracies += [accuracy]
                         test_precisions += [precision]
                         test_recalls += [recall]
+
+                    self.writer.add_scalar('Loss/test',loss.item(),idx)
+                    self.writer.add_scalar('Accuracy/test',accuracy,idx)
+                    self.writer.add_scalar('Precision/test',precision,idx)
+                    self.writer.add_scalar('Recall/test',recall,idx)
                     t.set_description(f"test:, test loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")
         
         test_accuracies = sum(test_accuracies)/len(test_accuracies)
