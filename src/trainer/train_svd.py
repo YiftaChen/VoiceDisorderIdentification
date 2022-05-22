@@ -4,6 +4,7 @@ from tqdm import tqdm
 import math
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from ray import tune
 
 class Trainer(object):
     def __init__(self,dataset,model,optimizers,critereon,hyper_params) -> None:
@@ -29,11 +30,12 @@ class Trainer(object):
             num_workers=hyper_params['num_workers']
         )
        
+        self.disableTQDM = False
         self.model = model
         self.optimizers = optimizers
         self.critereon=critereon
         self.hp = hyper_params
-        self.device = torch.device('cuda') if torch.cuda.is_available() else "cpu"
+        self.device = torch.device('cuda') if torch.cuda.is_available() else "cpu"        
         self.model = self.model.to(device=self.device)
     def train_val_test_split(self,ds):
         ds_len =  len(ds)
@@ -56,7 +58,7 @@ class Trainer(object):
             epoch_accuracies = []
             epoch_precisions = []
             epoch_recalls = []
-            with tqdm(self.train_set) as pbar:
+            with tqdm(self.train_set,disable=self.disableTQDM) as pbar:
                 for idx,sample in enumerate(pbar):                
                     x = sample['data'].to(device=self.device)
                     y = sample['classification'].float().squeeze().to(device=self.device)
@@ -98,7 +100,7 @@ class Trainer(object):
             vald_recalls = []
 
             vald_loss = 0.0
-            with tqdm(self.val_set) as t:
+            with tqdm(self.val_set,disable=self.disableTQDM) as t:
                     for idx,sample in enumerate(t):
                         x = sample['data'].to(device=self.device)
                         y = sample['classification'].float().squeeze().to(device=self.device)
@@ -118,6 +120,7 @@ class Trainer(object):
                         self.writer.add_scalar('Accuracy/validation',accuracy,idx)
                         self.writer.add_scalar('Precision/validation',precision,idx)
                         self.writer.add_scalar('Recall/validation',recall,idx)
+                        tune.report(acc=accuracy.item())
                         t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")
             
             vald_losses += [vald_loss]

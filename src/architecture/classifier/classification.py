@@ -15,7 +15,7 @@ class Classifier(nn.Module):
             input_dim = dimension
         layers+=[nn.Linear(input_dim,out_dim,bias=False)]
       
-        self.backend = yamnet(pretrained=True,remove_classification_layer=True)
+        self.backend = yamnet(pretrained=True,remove_orig_classifier=True)
         self.classification = nn.Sequential(self.backend,*layers)
 
     def forward(self,x):
