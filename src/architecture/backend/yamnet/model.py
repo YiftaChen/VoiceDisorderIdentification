@@ -165,7 +165,7 @@ class YAMNet(nn.Module):
 
 
             
-def yamnet(pretrained=True,remove_classification_layer=True):
+def yamnet(pretrained=True,remove_orig_classifier=True):
     model = YAMNet()
     if pretrained:
         state_dict = hub.load_state_dict_from_url(ckpt_url, progress=True)
@@ -173,7 +173,7 @@ def yamnet(pretrained=True,remove_classification_layer=True):
         for param in model.parameters():
             param.requires_grad = False
 
-    if remove_classification_layer:
+    if remove_orig_classifier:
         model.classifier = Identity()
     
     return model
