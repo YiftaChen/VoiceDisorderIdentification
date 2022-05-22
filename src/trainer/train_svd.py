@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from ray import tune
 
 class Trainer(object):
-    def __init__(self,dataset,model,optimizers,critereon,hyper_params) -> None:
+    def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=5) -> None:
         # self.dl = dataloader
         self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)
         self.writer = SummaryWriter("logs/")
@@ -30,6 +30,7 @@ class Trainer(object):
             num_workers=hyper_params['num_workers']
         )
        
+        self.early_stop = early_stop
         self.disableTQDM = False
         self.model = model
         self.optimizers = optimizers
@@ -53,6 +54,9 @@ class Trainer(object):
         train_precisions = []
         train_recalls = []
         
+        last_acc=0
+        runs_without_improv=0
+
         for epoch in range(self.hp['epochs']):
             running_loss = 0.0
             epoch_accuracies = []
@@ -120,9 +124,21 @@ class Trainer(object):
                         self.writer.add_scalar('Accuracy/validation',accuracy,idx)
                         self.writer.add_scalar('Precision/validation',precision,idx)
                         self.writer.add_scalar('Recall/validation',recall,idx)
-                        tune.report(acc=accuracy.item())
-                        t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")
-            
+
+                        tune.report(acc=accuracy.item())                        
+                        t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")            
+
+            if (accuracy.item()>last_acc):
+                last_acc=accuracy.item()
+                runs_without_improv=0
+            else:
+                runs_without_improv+=1
+
+            if (runs_without_improv>=self.early_stop):
+                vald_losses += [vald_loss]
+                return self.model,train_losses,vald_loss, train_accuracies,train_precisions,train_recalls,vald_accuracies,vald_precisions,vald_recalls                
+
+
             vald_losses += [vald_loss]
 
         return self.model,train_losses,vald_loss, train_accuracies,train_precisions,train_recalls,vald_accuracies,vald_precisions,vald_recalls

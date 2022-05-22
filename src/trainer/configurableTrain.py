@@ -20,7 +20,8 @@ import pickle
 dataset = SvdCutOffShort(r"/home/chenka@staff.technion.ac.il/Desktop/SVD",classification_binary=True,overfit_test = False)
 
 def train_model(config):
-    model = Classifier([512])
+    print(f'test config: {config}')
+    model = Classifier(config["mlp_layers"])
     loss = nn.BCEWithLogitsLoss()
     opt = torch.optim.Adam(model.parameters(),lr=config["lr"])
     hyper_params = {
@@ -34,10 +35,14 @@ def train_model(config):
     model = trainer.train()
     
 
-# train_model({'lr':0.1})
+# train_model({'lr':0.01})
 
+config={
+    'lr':tune.grid_search([0.1,0.01,0.001]),
+    'mlp_layers':[tune.grid_search([128, 256, 512]),tune.grid_search([128, 256, 512])]
+    }
 
-analysis = tune.run(train_model,config={'lr':tune.grid_search([0.1,0.01,0.001,0.0001])},metric="acc",resources_per_trial={'gpu':1},verbose=True)
+analysis = tune.run(train_model,config=config,metric="acc",resources_per_trial={'gpu':1},verbose=True)
 
 # with open('analysisFile','wb') as a_file:
 #     pickle.dump(analysis,a_file)
