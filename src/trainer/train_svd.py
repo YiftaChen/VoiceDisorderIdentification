@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from ray import tune
 
 class Trainer(object):
-    def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=5) -> None:
+    def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=20,device=None) -> None:
         # self.dl = dataloader
         self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)
         self.writer = SummaryWriter("logs/")
@@ -36,7 +36,10 @@ class Trainer(object):
         self.optimizers = optimizers
         self.critereon=critereon
         self.hp = hyper_params
-        self.device = torch.device('cuda') if torch.cuda.is_available() else "cpu"        
+        if (device is not None):
+            self.device = device
+        else:
+            self.device = torch.device('cuda') if torch.cuda.is_available() else "cpu"        
         self.model = self.model.to(device=self.device)
     def train_val_test_split(self,ds):
         ds_len =  len(ds)
@@ -59,6 +62,7 @@ class Trainer(object):
 
         for epoch in range(self.hp['epochs']):
             running_loss = 0.0
+            epoch_accuracy = 0.0
             epoch_accuracies = []
             epoch_precisions = []
             epoch_recalls = []
@@ -72,7 +76,11 @@ class Trainer(object):
                     loss.backward()
                     self.optimizers.step()
                     running_loss += loss.item() 
-                    predictions = outputs.detach() > 0.5
+                    predictions = outputs.detach() > 0
+                    # print('~~~~~~~ outputs ~~~~~~~~~~~')
+                    # print(outputs)
+                    # print('~~~~~~~~ predictions ~~~~~~~')
+                    # print(predictions)
                     len_predictions = 1 if len(predictions.shape) == 0 else len(predictions)
                     accuracy = torch.sum(predictions==y)/len_predictions      
                     precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
@@ -93,10 +101,10 @@ class Trainer(object):
                         epoch_recall = sum(epoch_recalls)/len(epoch_recalls)
                         pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%, Mean Precision:{epoch_precision*100}%, Mean Recall:{epoch_recall*100}%")
 
-                    self.writer.add_scalar('Loss/train',loss.item(),idx)
-                    self.writer.add_scalar('Accuracy/train',accuracy,idx)
-                    self.writer.add_scalar('Precision/train',precision,idx)
-                    self.writer.add_scalar('Recall/train',recall,idx)
+                    # self.writer.add_scalar('Loss/train',loss.item(),idx)
+                    # self.writer.add_scalar('Accuracy/train',accuracy,idx)
+                    # self.writer.add_scalar('Precision/train',precision,idx)
+                    # self.writer.add_scalar('Recall/train',recall,idx)
 
             train_losses += [running_loss]
             vald_accuracies = []
@@ -112,7 +120,7 @@ class Trainer(object):
                             outputs = self.model(x)
                             loss = self.critereon(outputs,y)
                             vald_loss += loss.item() 
-                            predictions = outputs.detach() > 0.5
+                            predictions = outputs.detach() > 0
                             len_predictions = 1 if len(predictions.shape) == 0 else len(predictions)
                             accuracy = torch.sum(predictions==y)/len_predictions             
                             precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
@@ -120,16 +128,17 @@ class Trainer(object):
                             vald_accuracies += [accuracy]
                             vald_precisions += [precision]
                             vald_recalls += [recall]
-                        self.writer.add_scalar('Loss/validation',loss.item(),idx)
-                        self.writer.add_scalar('Accuracy/validation',accuracy,idx)
-                        self.writer.add_scalar('Precision/validation',precision,idx)
-                        self.writer.add_scalar('Recall/validation',recall,idx)
-
-                        tune.report(acc=accuracy.item())                        
+                        # self.writer.add_scalar('Loss/validation',loss.item(),idx)
+                        # self.writer.add_scalar('Accuracy/validation',accuracy,idx)
+                        # self.writer.add_scalar('Precision/validation',precision,idx)
+                        # self.writer.add_scalar('Recall/validation',recall,idx)
+                        
                         t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")            
 
-            if (accuracy.item()>last_acc):
-                last_acc=accuracy.item()
+            tune.report(valid_acc=accuracy.item(),train_acc=epoch_accuracy.item())                        
+
+            if (epoch_accuracy.item()>last_acc):
+                last_acc=epoch_accuracy.item()
                 runs_without_improv=0
             else:
                 runs_without_improv+=1
@@ -157,7 +166,7 @@ class Trainer(object):
                         outputs = model(x)
                         loss = self.critereon(outputs,y)
                         test_loss += loss.item() 
-                        predictions = outputs.detach() > 0.5
+                        predictions = outputs.detach() > 0
                         len_predictions = 1 if len(predictions.shape) == 0 else len(predictions)
                         accuracy = torch.sum(predictions==y)/len_predictions
                         precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)

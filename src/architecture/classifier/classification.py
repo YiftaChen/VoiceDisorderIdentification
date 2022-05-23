@@ -4,14 +4,14 @@ import torch
 import torch.nn as nn
 
 class Classifier(nn.Module):
-    def __init__(self,dimensions=[],out_dim=1) -> None:
+    def __init__(self,dimensions=[],out_dim=1,activation=nn.ReLU()) -> None:
         super().__init__()
         layers = []
         input_dim=1024
         for dimension in dimensions:
             layers += [nn.Linear(input_dim,dimension,bias=False),
-                        # nn.BatchNorm1d(num_features=dimension),
-                        nn.ReLU()]
+                        nn.BatchNorm1d(num_features=dimension),
+                        activation]
             input_dim = dimension
         layers+=[nn.Linear(input_dim,out_dim,bias=False)]
       
