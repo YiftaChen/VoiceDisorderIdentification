@@ -17,14 +17,14 @@ import torch.optim
 from ray import tune
 import pickle
 
-dataset = SvdCutOffShort(r"/home/chenka@staff.technion.ac.il/Desktop/SVD",classification_binary=True,overfit_test = True)
+dataset = SvdCutOffShort(r"/home/chenka@staff.technion.ac.il/Desktop/SVD",classification_binary=True,overfit_test = False)
 
 def train_model(config):
     print(f'test config: {config}')
-    model = Classifier(config["mlp_layers"],activation=nn.ReLU())    
+    model = Classifier(config["mlp_layers"],activation=nn.LeakyReLU(negative_slope=0.01))    
     loss = nn.BCEWithLogitsLoss()
-    params_non_frozen = filter(lambda p: p.requires_grad, model.parameters())
-    opt = torch.optim.Adam(params_non_frozen,lr=config["lr"])
+    # params_non_frozen = filter(lambda p: p.requires_grad, model.parameters())
+    opt = torch.optim.Adam(model.parameters(),lr=config["lr"])
     hyper_params = {
         'train_batch_size':128,
         'vald_batch_size':128,
@@ -38,8 +38,9 @@ def train_model(config):
 
 
 config={
-    'lr':tune.grid_search([0.1,0.01,0.001]),
-    'mlp_layers':[tune.grid_search([1024, 512,256]),tune.grid_search([1024,512,256])]
+    'lr':tune.grid_search([1e-3,1e-2]),
+    'mlp_layers':[tune.grid_search([512,128]),tune.grid_search([128,512,256])]
+    # 'momentum':[tune.grid_search([0.9,0.2,0])]
     }
 analysis = tune.run(train_model,config=config,resources_per_trial={'gpu':1},verbose=True)
 

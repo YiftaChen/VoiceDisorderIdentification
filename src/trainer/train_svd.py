@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from ray import tune
 
 class Trainer(object):
-    def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=20,device=None) -> None:
+    def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=50,device=None) -> None:
         # self.dl = dataloader
         self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)
         self.writer = SummaryWriter("logs/")
@@ -77,10 +77,12 @@ class Trainer(object):
                     self.optimizers.step()
                     running_loss += loss.item() 
                     predictions = outputs.detach() > 0
-                    # print('~~~~~~~ outputs ~~~~~~~~~~~')
-                    # print(outputs)
-                    # print('~~~~~~~~ predictions ~~~~~~~')
-                    # print(predictions)
+                    print('~~~~~~~ outputs ~~~~~~~~~~~')
+                    print(outputs)
+                    print('~~~~~~~~ predictions ~~~~~~~')
+                    print(predictions)
+                    print('~~~~~~~~ real daya ~~~~~~~')
+                    print(sample['classification'])
                     len_predictions = 1 if len(predictions.shape) == 0 else len(predictions)
                     accuracy = torch.sum(predictions==y)/len_predictions      
                     precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
