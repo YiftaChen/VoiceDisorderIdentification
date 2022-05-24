@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from ray import tune
 
 class Trainer(object):
-    def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=50,device=None) -> None:
+    def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=float('inf'),device=None,verbose=False) -> None:
         # self.dl = dataloader
         self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)
         self.writer = SummaryWriter("logs/")
@@ -31,7 +31,7 @@ class Trainer(object):
         )
        
         self.early_stop = early_stop
-        self.disableTQDM = False
+        self.disableTQDM = not verbose
         self.model = model
         self.optimizers = optimizers
         self.critereon=critereon
@@ -60,97 +60,95 @@ class Trainer(object):
         last_acc=0
         runs_without_improv=0
 
-        for epoch in range(self.hp['epochs']):
-            running_loss = 0.0
-            epoch_accuracy = 0.0
-            epoch_accuracies = []
-            epoch_precisions = []
-            epoch_recalls = []
-            with tqdm(self.train_set,disable=self.disableTQDM) as pbar:
-                for idx,sample in enumerate(pbar):                
-                    x = sample['data'].to(device=self.device)
-                    y = sample['classification'].float().squeeze().to(device=self.device)
-                    self.optimizers.zero_grad()
-                    outputs = self.model(x)
-                    loss = self.critereon(outputs,y)
-                    loss.backward()
-                    self.optimizers.step()
-                    running_loss += loss.item() 
-                    predictions = outputs.detach() > 0
-                    print('~~~~~~~ outputs ~~~~~~~~~~~')
-                    print(outputs)
-                    print('~~~~~~~~ predictions ~~~~~~~')
-                    print(predictions)
-                    print('~~~~~~~~ real daya ~~~~~~~')
-                    print(sample['classification'])
-                    len_predictions = 1 if len(predictions.shape) == 0 else len(predictions)
-                    accuracy = torch.sum(predictions==y)/len_predictions      
-                    precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
-                    recall = torch.sum(predictions*(predictions==y))/torch.sum(y)
-
-                    train_accuracies += [accuracy]
-                    train_precisions += [precision]
-                    train_recalls += [recall]
-                    
-                    epoch_accuracies += [accuracy]
-                    epoch_precisions += [precision]
-                    epoch_recalls += [recall]
-
-                    pbar.set_description(f"train epoch {epoch}, train loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")
-                    if idx == len(self.train_set)-1 :
-                        epoch_accuracy = sum(epoch_accuracies)/len(epoch_accuracies)
-                        epoch_precision = sum(epoch_precisions)/len(epoch_precisions)
-                        epoch_recall = sum(epoch_recalls)/len(epoch_recalls)
-                        pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%, Mean Precision:{epoch_precision*100}%, Mean Recall:{epoch_recall*100}%")
-
-                    # self.writer.add_scalar('Loss/train',loss.item(),idx)
-                    # self.writer.add_scalar('Accuracy/train',accuracy,idx)
-                    # self.writer.add_scalar('Precision/train',precision,idx)
-                    # self.writer.add_scalar('Recall/train',recall,idx)
-
-            train_losses += [running_loss]
-            vald_accuracies = []
-            vald_precisions = []
-            vald_recalls = []
-
-            vald_loss = 0.0
-            with tqdm(self.val_set,disable=self.disableTQDM) as t:
-                    for idx,sample in enumerate(t):
+        with tqdm(range(self.hp['epochs'])) as pbar_epochs:
+            for idx,epoch in enumerate(pbar_epochs):
+                running_loss = 0.0
+                epoch_accuracy = 0.0
+                epoch_accuracies = []
+                epoch_precisions = []
+                epoch_recalls = []
+                with tqdm(self.train_set,disable=self.disableTQDM) as pbar:
+                    for idx,sample in enumerate(pbar):                
                         x = sample['data'].to(device=self.device)
                         y = sample['classification'].float().squeeze().to(device=self.device)
-                        with torch.no_grad():
-                            outputs = self.model(x)
-                            loss = self.critereon(outputs,y)
-                            vald_loss += loss.item() 
-                            predictions = outputs.detach() > 0
-                            len_predictions = 1 if len(predictions.shape) == 0 else len(predictions)
-                            accuracy = torch.sum(predictions==y)/len_predictions             
-                            precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
-                            recall = torch.sum(predictions*(predictions==y))/torch.sum(y)
-                            vald_accuracies += [accuracy]
-                            vald_precisions += [precision]
-                            vald_recalls += [recall]
-                        # self.writer.add_scalar('Loss/validation',loss.item(),idx)
-                        # self.writer.add_scalar('Accuracy/validation',accuracy,idx)
-                        # self.writer.add_scalar('Precision/validation',precision,idx)
-                        # self.writer.add_scalar('Recall/validation',recall,idx)
+                        self.optimizers.zero_grad()
+                        outputs = self.model(x)
+                        loss = self.critereon(outputs,y)
+                        loss.backward()
+                        self.optimizers.step()
+                        running_loss += loss.item() 
+                        predictions = outputs.detach() > 0                    
+                        len_predictions = 1 if len(predictions.shape) == 0 else len(predictions)
+                        accuracy = torch.sum(predictions==y)/len_predictions      
+                        precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
+                        recall = torch.sum(predictions*(predictions==y))/torch.sum(y)
+
+                        train_accuracies += [accuracy]
+                        train_precisions += [precision]
+                        train_recalls += [recall]
                         
-                        t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")            
+                        epoch_accuracies += [accuracy]
+                        epoch_precisions += [precision]
+                        epoch_recalls += [recall]
 
-            tune.report(valid_acc=accuracy.item(),train_acc=epoch_accuracy.item())                        
+                        pbar.set_description(f"train epoch {epoch}, train loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")
+                        if idx == len(self.train_set)-1 :
+                            epoch_accuracy = sum(epoch_accuracies)/len(epoch_accuracies)
+                            epoch_precision = sum(epoch_precisions)/len(epoch_precisions)
+                            epoch_recall = sum(epoch_recalls)/len(epoch_recalls)
+                            pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%, Mean Precision:{epoch_precision*100}%, Mean Recall:{epoch_recall*100}%")
 
-            if (epoch_accuracy.item()>last_acc):
-                last_acc=epoch_accuracy.item()
-                runs_without_improv=0
-            else:
-                runs_without_improv+=1
+                        # self.writer.add_scalar('Loss/train',loss.item(),idx)
+                        # self.writer.add_scalar('Accuracy/train',accuracy,idx)
+                        # self.writer.add_scalar('Precision/train',precision,idx)
+                        # self.writer.add_scalar('Recall/train',recall,idx)
 
-            if (runs_without_improv>=self.early_stop):
+                train_losses += [running_loss]
+                vald_accuracies = []
+                vald_precisions = []
+                vald_recalls = []
+
+                vald_loss = 0.0
+                with tqdm(self.val_set,disable=self.disableTQDM) as t:
+                        for idx,sample in enumerate(t):
+                            x = sample['data'].to(device=self.device)
+                            y = sample['classification'].float().squeeze().to(device=self.device)
+                            with torch.no_grad():
+                                outputs = self.model(x)
+                                loss = self.critereon(outputs,y)
+                                vald_loss += loss.item() 
+                                predictions = outputs.detach() > 0
+                                len_predictions = 1 if len(predictions.shape) == 0 else len(predictions)
+                                accuracy = torch.sum(predictions==y)/len_predictions             
+                                precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
+                                recall = torch.sum(predictions*(predictions==y))/torch.sum(y)
+                                vald_accuracies += [accuracy]
+                                vald_precisions += [precision]
+                                vald_recalls += [recall]
+                            # self.writer.add_scalar('Loss/validation',loss.item(),idx)
+                            # self.writer.add_scalar('Accuracy/validation',accuracy,idx)
+                            # self.writer.add_scalar('Precision/validation',precision,idx)
+                            # self.writer.add_scalar('Recall/validation',recall,idx)
+                            
+                            t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")            
+
+                
+                tune.report(valid_acc=accuracy.item(),train_acc=epoch_accuracy.item())                        
+
+                if (accuracy.item()>last_acc):
+                    last_acc=accuracy.item()
+                    runs_without_improv=0
+                else:
+                    runs_without_improv+=1
+
+                pbar_epochs.set_description(f"validation epoch {epoch}, train acc {'{:.2f}'.format(epoch_accuracy.item())}, validation acc {'{:.2f}'.format(accuracy.item())}")            
+
+                if (runs_without_improv>=self.early_stop):
+                    vald_losses += [vald_loss]
+                    return self.model,train_losses,vald_loss, train_accuracies,train_precisions,train_recalls,vald_accuracies,vald_precisions,vald_recalls                
+
+
                 vald_losses += [vald_loss]
-                return self.model,train_losses,vald_loss, train_accuracies,train_precisions,train_recalls,vald_accuracies,vald_precisions,vald_recalls                
-
-
-            vald_losses += [vald_loss]
 
         return self.model,train_losses,vald_loss, train_accuracies,train_precisions,train_recalls,vald_accuracies,vald_precisions,vald_recalls
 
