@@ -46,7 +46,7 @@ def train_model(config):
 
 
 config={
-    'lr':tune.grid_search([1e-3,1e-4]),
+    'lr':tune.grid_search([1e-2,1e-3]),
     'mlp_layers':[tune.grid_search([512,256,128])]
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)

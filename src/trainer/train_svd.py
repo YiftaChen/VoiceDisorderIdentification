@@ -43,11 +43,10 @@ class Trainer(object):
         self.model = self.model.to(device=self.device)
     def train_val_test_split(self,ds):
         ds_len =  len(ds)
-        len_test = math.floor(ds_len*0.2)
-        len_train_vald = ds_len - len_test
-        len_train = math.ceil(len_train_vald*0.8)
-        len_vald = len_train_vald - len_train
-        return torch.utils.data.random_split(ds, [len_train,len_vald,len_test]) 
+        len_test = math.floor(ds_len*0.1)
+        len_valid = math.floor(ds_len*0.1)
+        len_train = ds_len-len_test-len_valid              
+        return torch.utils.data.random_split(ds, [len_train,len_valid,len_test]) 
 
     def train(self):
         train_losses = []
