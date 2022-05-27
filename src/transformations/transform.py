@@ -18,6 +18,19 @@ class ToTensor(nn.Module):
 
     def __call__(self, sample):
         return torch.from_numpy(sample).float()
+class PadWhiteNoise(nn.Module):
+    """Convert ndarrays in sample to Tensors."""
+
+    def __call__(self,sample,sr=50000):
+        if len(sample)>50000:
+            return sample
+        
+        mean = sample.mean()
+        variance = sample.var()
+        noise = np.random.normal(mean,variance,sr-len(sample))/10
+        signal=np.concatenate((sample,noise))
+
+        return signal
 
 class Truncate(nn.Module):
     def __init__(self,N):
