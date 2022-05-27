@@ -5,6 +5,7 @@ import math
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from ray import tune
+import numpy as np
 
 class Trainer(object):
     def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=float('inf'),device=None,verbose=False) -> None:
@@ -66,6 +67,7 @@ class Trainer(object):
                 epoch_accuracies = []
                 epoch_precisions = []
                 epoch_recalls = []
+                epoch_losses = []
                 with tqdm(self.train_set,disable=self.disableTQDM) as pbar:
                     for idx,sample in enumerate(pbar):                
                         x = sample['data'].to(device=self.device)
@@ -89,12 +91,13 @@ class Trainer(object):
                         epoch_accuracies += [accuracy]
                         epoch_precisions += [precision]
                         epoch_recalls += [recall]
-
+                        epoch_losses += [loss]
                         pbar.set_description(f"train epoch {epoch}, train loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")
                         if idx == len(self.train_set)-1 :
                             epoch_accuracy = sum(epoch_accuracies)/len(epoch_accuracies)
                             epoch_precision = sum(epoch_precisions)/len(epoch_precisions)
                             epoch_recall = sum(epoch_recalls)/len(epoch_recalls)
+                            epoch_loss = sum(epoch_losses)/len(epoch_losses)
                             pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%, Mean Precision:{epoch_precision*100}%, Mean Recall:{epoch_recall*100}%")
 
                         # self.writer.add_scalar('Loss/train',loss.item(),idx)
@@ -121,9 +124,10 @@ class Trainer(object):
                                 accuracy = torch.sum(predictions==y)/len_predictions             
                                 precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
                                 recall = torch.sum(predictions*(predictions==y))/torch.sum(y)
-                                vald_accuracies += [accuracy]
-                                vald_precisions += [precision]
-                                vald_recalls += [recall]
+                                vald_accuracies += [accuracy.cpu().item()]
+                                vald_precisions += [precision.cpu().item()]
+                                vald_recalls += [recall.cpu().item()]
+                                vald_losses += [loss.cpu().item()]
                             # self.writer.add_scalar('Loss/validation',loss.item(),idx)
                             # self.writer.add_scalar('Accuracy/validation',accuracy,idx)
                             # self.writer.add_scalar('Precision/validation',precision,idx)
@@ -131,8 +135,14 @@ class Trainer(object):
                             
                             t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")            
 
-                
-                tune.report(valid_acc=accuracy.item(),train_acc=epoch_accuracy.item())                        
+                accuracy = np.array(vald_accuracies).mean()
+                precision = np.array(vald_precisions).mean()
+                recall = np.array(vald_recalls).mean()
+                loss = np.array(vald_losses).mean()
+                tune.report(valid_acc=accuracy,train_acc=epoch_accuracy.item())                        
+                tune.report(valid_precision=precision,train_precision=epoch_precision.item())                        
+                tune.report(valid_recall=recall,train_recall=epoch_recall.item())                        
+                tune.report(valid_loss=loss,train_loss=epoch_loss.item())                        
 
                 if (accuracy.item()>last_acc):
                     last_acc=accuracy.item()

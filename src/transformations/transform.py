@@ -5,6 +5,7 @@ import torch.nn as nn
 import numpy as np
 import torchaudio.transforms as ta_trans
 from core.params import CommonParams, YAMNetParams
+import random
 
 class ToOneHot(nn.Module):
     def __call__(self, classification):
@@ -18,16 +19,37 @@ class ToTensor(nn.Module):
 
     def __call__(self, sample):
         return torch.from_numpy(sample).float()
+
+class RandomFlip(nn.Module):
+    """Randomly flips the sample"""
+    def __init__(self,probability=0.5):
+        self.probability=probability
+
+    def __call__(self,sample):
+        if random.random() < self.probability:
+            return np.array(sample[::-1])
+        return sample
+        
+# class RandomFlip(nn.Module):
+#     """Randomly flips the sample"""
+#     def __init__(probability=0.5):
+#         self.probability=probability
+
+#     def __call__(self,sample):
+#         if random.random() < self.probability:
+#             return sample[::-1]
+      
+
 class PadWhiteNoise(nn.Module):
-    """Convert ndarrays in sample to Tensors."""
+    """Pads white noise to short audio samples."""
 
     def __call__(self,sample,sr=50000):
-        if len(sample)>50000:
+        if len(sample)>60000:
             return sample
         
         mean = sample.mean()
         variance = sample.var()
-        noise = np.random.normal(mean,variance,sr-len(sample))/10
+        noise = np.random.normal(mean,variance,60000-len(sample))/10
         signal=np.concatenate((sample,noise))
 
         return signal

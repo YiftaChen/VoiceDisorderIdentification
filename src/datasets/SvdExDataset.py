@@ -4,11 +4,11 @@ import torch
 from torch.utils.data import Dataset
 from scipy.io import wavfile
 import torch.nn as nn
-from transformations import PadWhiteNoise,ToTensor,Truncate,ToOneHot,WaveformToInput
+from transformations import RandomFlip,PadWhiteNoise,ToTensor,Truncate,ToOneHot,WaveformToInput
 import librosa
 from core.params import CommonParams as cfg,PathologiesToIndex
 
-default_transforms = nn.Sequential(PadWhiteNoise(),ToTensor(),Truncate(cfg.SVD_SAMPLE_RATE*cfg.VOICE_SAMPLE_MIN_LENGTH),WaveformToInput())
+default_transforms = nn.Sequential(RandomFlip(), PadWhiteNoise(),ToTensor(),Truncate(60000),WaveformToInput())
 default_label_transforms = nn.Sequential(ToOneHot())
 
 class SvdExtendedVoiceDataset(Dataset):
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     from tqdm import tqdm
     from torch.utils.data import DataLoader
 
-    dataset = SvdExtendedVoiceDataset(r"/Users/yiftachedelstain/Development/VoiceDisorderIdentification/data/SVD - Extended/",classification_binary=True)
+    dataset = SvdExtendedVoiceDataset(r"/home/yiftach.ede@staff.technion.ac.il/data/SVD",classification_binary=True)
     loader = DataLoader(
         dataset,
         batch_size=128,

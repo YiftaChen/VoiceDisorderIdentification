@@ -10,14 +10,14 @@ from architecture.backend.yamnet.model import yamnet_category_metadata
 
 from architecture.classifier.classification import Classifier
 
-from datasets.SvdExDataset import SvdCutOffShort
+from datasets.SvdExDataset import SvdCutOffShort,SvdExtendedVoiceDataset
 import trainer.train_svd as svd_trainer
 import torch.nn as nn
 import torch.optim 
 from ray import tune
 import pickle
 
-dataset = SvdCutOffShort(r"/home/chenka@staff.technion.ac.il/Desktop/SVD",classification_binary=True,overfit_test = False)
+dataset = SvdExtendedVoiceDataset(r"/home/yiftach.ede@staff.technion.ac.il/data/SVD",classification_binary=True)
 
 def train_model(config):
     print(f'test config: {config}')
