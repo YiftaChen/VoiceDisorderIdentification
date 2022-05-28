@@ -20,7 +20,7 @@ import pickle
 
 def train_model(config):
     print(f'test config: {config}')
-    dataset = SvdExtendedVoiceDataset(r"/home/chenka@staff.technion.ac.il/Desktop/SVD",classification_binary=True,apply_augmentations = config['augmentations'])
+    dataset = SvdExtendedVoiceDataset(r"/home/yiftach.ede@staff.technion.ac.il/Desktop/SVD",hp = config,classification_binary=True)
 
     model = Classifier(config["mlp_layers"],activation=nn.LeakyReLU(negative_slope=0.01),freeze_backend_grad=False)    
     loss = nn.BCEWithLogitsLoss()
@@ -49,7 +49,7 @@ def train_model(config):
 config={
     'lr':tune.grid_search([1e-2,1e-3]),
     'mlp_layers':[tune.grid_search([512,256,128])],
-    'augmentations':[tune.grid_search(2)]
+    'augmentations':tune.grid_search([["TimeInversion","PitchShift"],["TimeInversion"],["PitchShift"],[]])
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)
     }

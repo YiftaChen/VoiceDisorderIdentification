@@ -45,7 +45,7 @@ class SvdExtendedVoiceDataset(Dataset):
     def __init__(self, root_dir, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True):
         self.root_dir = root_dir
         audiomentations = create_transformations(hp['augmentations'])
-        data_transform = nn.Sequential(ToTensor(),Inflate(),audiomentations,Deflate(),PadWhiteNoise(70000),Truncate(70000),)
+        data_transform = nn.Sequential(ToTensor(),Inflate(),audiomentations,Deflate(),PadWhiteNoise(70000),Truncate(70000),WaveformToInput())
 
         self.data_transform = data_transform
         self.label_transform = label_transform
