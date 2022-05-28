@@ -11,6 +11,7 @@ from core.params import CommonParams as cfg,PathologiesToIndex
 default_transforms = nn.Sequential(RandomFlip(), PadWhiteNoise(),ToTensor(),Truncate(60000),WaveformToInput())
 default_label_transforms = nn.Sequential(ToOneHot())
 
+# TODO: make this inherit AudioFolderDataset
 class SvdExtendedVoiceDataset(Dataset):
     """Saarbruken blah blah"""
 

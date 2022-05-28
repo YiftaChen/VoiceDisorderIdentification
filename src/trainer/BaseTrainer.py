@@ -1,17 +1,14 @@
-from pickletools import optimize
-import torch
-from tqdm import tqdm
-import math
+from abc import ABC,abstractclassmethod
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
-from ray import tune
-import numpy as np
+import torch
+import tqdm
+import math
 
-class Trainer(object):
-    def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=float('inf'),device=None,verbose=False) -> None:
+
+class BaseTrainer(object):
+    def __init__(self,dataset,model,optimizer,hyper_params,early_stop=float('inf'),device=None,verbose=False) -> None:
         # self.dl = dataloader
-        self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)
-        self.writer = SummaryWriter("logs/")
+        self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)        
         self.train_set =  DataLoader(
             self.train_set,
             batch_size=hyper_params['train_batch_size'],
@@ -34,14 +31,15 @@ class Trainer(object):
         self.early_stop = early_stop
         self.disableTQDM = not verbose
         self.model = model
-        self.optimizers = optimizers
-        self.critereon=critereon
+        self.optimizer = optimizer
+        
         self.hp = hyper_params
         if (device is not None):
             self.device = device
         else:
             self.device = torch.device('cuda') if torch.cuda.is_available() else "cpu"        
         self.model = self.model.to(device=self.device)
+
     def train_val_test_split(self,ds):
         ds_len =  len(ds)
         len_test = math.floor(ds_len*0.1)
