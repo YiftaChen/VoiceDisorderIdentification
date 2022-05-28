@@ -8,10 +8,14 @@ from core.params import CommonParams, YAMNetParams
 import random
 
 class ToOneHot(nn.Module):
+    def __init__(self,num_classes=10) -> None:
+        super().__init__()
+        self.num_classes = num_classes
+
     def __call__(self, classification):
         if not isinstance(classification,bool):
             classification = torch.Tensor([classification]).to(torch.int64)
-            classification = F.one_hot(classification,10).squeeze()
+            classification = F.one_hot(classification,self.num_classes).squeeze()
         return classification
 
 class ToTensor(nn.Module):

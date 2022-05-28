@@ -39,6 +39,7 @@ def create_transformations(augmentations):
 # WaveformToInput())
 default_label_transforms = nn.Sequential(ToOneHot())
 
+# TODO: make this inherit AudioFolderDataset
 class SvdExtendedVoiceDataset(Dataset):
     """Saarbruken blah blah"""
 
