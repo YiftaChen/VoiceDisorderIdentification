@@ -16,12 +16,16 @@ from trainer.MulticlassTrainer import MulticlassTrainer
 import torch.nn as nn
 import torch.optim 
 
+from ray import tune
 
-dataset = ESC50Dataset('/home/chenka@staff.technion.ac.il/ESC-50-master/audio')
+
+dataset = ESC50Dataset('/home/chenka@staff.technion.ac.il/Desktop/SVD')
+# dataset = ESC50Dataset('/home/chenka@staff.technion.ac.il/ESC-50-master/audio')
 
 def train_model(config):
     print(f'test config: {config}')
-    model = Classifier(config["mlp_layers"],out_dim=50,activation=nn.LeakyReLU(negative_slope=0.01),freeze_backend_grad=False)    
+    model = Classifier(config["mlp_layers"],out_dim=2,activation=nn.LeakyReLU(negative_slope=0.01),freeze_backend_grad=False)    
+    # model = Classifier(config["mlp_layers"],out_dim=50,activation=nn.LeakyReLU(negative_slope=0.01),freeze_backend_grad=False)    
     loss = nn.CrossEntropyLoss()
    
     opt = torch.optim.Adam(
@@ -46,4 +50,6 @@ config={
     'lr':0.01,
     'mlp_layers':[512]
 }
-train_model(config)
+# train_model(config)
+
+analysis = tune.run(train_model,config=config,resources_per_trial={'gpu':1},verbose=False)

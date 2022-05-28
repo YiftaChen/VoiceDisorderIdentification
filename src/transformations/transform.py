@@ -82,9 +82,9 @@ class WaveformToInput(torch.nn.Module):
 
     #TODO change hard coded number to configuration
     def __call__(self, waveform):
-        res = self.wavform_to_log_mel(waveform=waveform,sample_rate=CommonParams.SVD_SAMPLE_RATE)[0]
+        res,spectrogram = self.wavform_to_log_mel(waveform=waveform,sample_rate=CommonParams.SVD_SAMPLE_RATE)
         shape = res.shape
-        return res[0].reshape(*shape[1:])
+        return res[0].reshape(*shape[1:]),spectrogram
     #     '''
     #     Args:
     #         waveform: torch tsr [num_audio_channels, num_time_steps]
