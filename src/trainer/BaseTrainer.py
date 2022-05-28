@@ -1,12 +1,20 @@
 from abc import ABC,abstractclassmethod
 from torch.utils.data import DataLoader
 import torch
-import tqdm
+from tqdm import tqdm
 import math
+from typing import NamedTuple
+import numpy as np
+from ray import tune
+
+
+class BatchResult(NamedTuple):    
+    loss: float
+    accuracy: float
 
 
 class BaseTrainer(object):
-    def __init__(self,dataset,model,optimizer,hyper_params,early_stop=float('inf'),device=None,verbose=False) -> None:
+    def __init__(self,dataset,model,optimizer,hyper_params,early_stop=float('inf'),device=None,verbose=False,logResults=True) -> None:
         # self.dl = dataloader
         self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)        
         self.train_set =  DataLoader(
@@ -32,6 +40,7 @@ class BaseTrainer(object):
         self.disableTQDM = not verbose
         self.model = model
         self.optimizer = optimizer
+        self.logResults = logResults
         
         self.hp = hyper_params
         if (device is not None):
@@ -47,14 +56,17 @@ class BaseTrainer(object):
         len_train = ds_len-len_test-len_valid              
         return torch.utils.data.random_split(ds, [len_train,len_valid,len_test]) 
 
-    def train(self):
-        train_losses = []
-        vald_losses = []
+    def train_batch(self, sample) -> BatchResult:
+        pass
 
+    def validate_batch(self, sample) -> BatchResult:
+        pass
+
+
+    def train(self):
+        train_losses = []        
         train_accuracies = []
-        train_precisions = []
-        train_recalls = []
-        
+      
         last_acc=0
         runs_without_improv=0
 
@@ -62,87 +74,52 @@ class BaseTrainer(object):
             for idx,epoch in enumerate(pbar_epochs):
                 running_loss = 0.0
                 epoch_accuracy = 0.0
-                epoch_accuracies = []
-                epoch_precisions = []
-                epoch_recalls = []
+                epoch_accuracies = []               
                 epoch_losses = []
                 with tqdm(self.train_set,disable=self.disableTQDM) as pbar:
-                    for idx,sample in enumerate(pbar):                
-                        x = sample['data'].to(device=self.device)
-                        y = sample['classification'].long().squeeze().to(device=self.device)
-                        self.optimizers.zero_grad()
-                        outputs = self.model(x)
-                        print(outputs)
-                        print(y)
-                        loss = self.critereon(outputs,y)
-                        loss.backward()
-                        self.optimizers.step()
-                        running_loss += loss.item() 
-                        predictions = outputs.detach() > 0                    
-                        len_predictions = 1 if len(predictions.shape) == 0 else len(predictions)
-                        accuracy = torch.sum(predictions==y)/len_predictions      
-                        precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
-                        recall = torch.sum(predictions*(predictions==y))/torch.sum(y)
+                    for idx,sample in enumerate(pbar): 
+                        batchRes = self.train_batch(sample)
 
-                        train_accuracies += [accuracy]
-                        train_precisions += [precision]
-                        train_recalls += [recall]
-                        
-                        epoch_accuracies += [accuracy]
-                        epoch_precisions += [precision]
-                        epoch_recalls += [recall]
+                        accuracy = batchRes.accuracy
+                        loss = batchRes.loss
+
+                        running_loss+=loss
+
+                        train_accuracies += [accuracy]                       
                         epoch_losses += [loss]
-                        pbar.set_description(f"train epoch {epoch}, train loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")
-                        if idx == len(self.train_set)-1 :
-                            epoch_accuracy = sum(epoch_accuracies)/len(epoch_accuracies)
-                            epoch_precision = sum(epoch_precisions)/len(epoch_precisions)
-                            epoch_recall = sum(epoch_recalls)/len(epoch_recalls)
-                            epoch_loss = sum(epoch_losses)/len(epoch_losses)
-                            pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%, Mean Precision:{epoch_precision*100}%, Mean Recall:{epoch_recall*100}%")
+                        epoch_accuracies += [accuracy]                        
 
-                        # self.writer.add_scalar('Loss/train',loss.item(),idx)
-                        # self.writer.add_scalar('Accuracy/train',accuracy,idx)
-                        # self.writer.add_scalar('Precision/train',precision,idx)
-                        # self.writer.add_scalar('Recall/train',recall,idx)
+                        pbar.set_description(f"train epoch {epoch}, train loss is {loss.item()}, Accuracy {accuracy*100}%")
+                        if idx == len(self.train_set)-1 :
+                            epoch_accuracy = sum(epoch_accuracies)/len(epoch_accuracies)                           
+                            epoch_loss = sum(epoch_losses)/len(epoch_losses)
+                            pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%")
+                    
 
                 train_losses += [running_loss]
-                vald_accuracies = []
-                vald_precisions = []
-                vald_recalls = []
+                vald_accuracies = []   
+                vald_losses = []        
 
                 vald_loss = 0.0
                 with tqdm(self.val_set,disable=self.disableTQDM) as t:
-                        for idx,sample in enumerate(t):
-                            x = sample['data'].to(device=self.device)
-                            y = sample['classification'].float().squeeze().to(device=self.device)
-                            with torch.no_grad():
-                                outputs = self.model(x)
-                                loss = self.critereon(outputs,y)
-                                vald_loss += loss.item() 
-                                predictions = outputs.detach() > 0
-                                len_predictions = 1 if len(predictions.shape) == 0 else len(predictions)
-                                accuracy = torch.sum(predictions==y)/len_predictions             
-                                precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
-                                recall = torch.sum(predictions*(predictions==y))/torch.sum(y)
-                                vald_accuracies += [accuracy.cpu().item()]
-                                vald_precisions += [precision.cpu().item()]
-                                vald_recalls += [recall.cpu().item()]
-                                vald_losses += [loss.cpu().item()]
-                            # self.writer.add_scalar('Loss/validation',loss.item(),idx)
-                            # self.writer.add_scalar('Accuracy/validation',accuracy,idx)
-                            # self.writer.add_scalar('Precision/validation',precision,idx)
-                            # self.writer.add_scalar('Recall/validation',recall,idx)
-                            
-                            t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")            
+                        for idx,sample in enumerate(t):                            
+                            batchRes = self.validate_batch(sample)
 
-                accuracy = np.array(vald_accuracies).mean()
-                precision = np.array(vald_precisions).mean()
-                recall = np.array(vald_recalls).mean()
+                            accuracy = batchRes.accuracy.cpu()
+                            loss = batchRes.loss.cpu()
+                            vald_loss+=loss
+
+                            vald_accuracies += [accuracy]                            
+                            vald_losses += [loss]
+                         
+                            t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%")            
+
+                accuracy = np.array(vald_accuracies).mean()               
                 loss = np.array(vald_losses).mean()
-                tune.report(valid_acc=accuracy,train_acc=epoch_accuracy.item())                        
-                tune.report(valid_precision=precision,train_precision=epoch_precision.item())                        
-                tune.report(valid_recall=recall,train_recall=epoch_recall.item())                        
-                tune.report(valid_loss=loss,train_loss=epoch_loss.item())                        
+
+                if (self.logResults):
+                    tune.report(valid_acc=accuracy,train_acc=epoch_accuracy.item())                                            
+                    tune.report(valid_loss=loss,train_loss=epoch_loss.item())                        
 
                 if (accuracy.item()>last_acc):
                     last_acc=accuracy.item()
@@ -154,12 +131,11 @@ class BaseTrainer(object):
 
                 if (runs_without_improv>=self.early_stop):
                     vald_losses += [vald_loss]
-                    return self.model,train_losses,vald_loss, train_accuracies,train_precisions,train_recalls,vald_accuracies,vald_precisions,vald_recalls                
-
+                    return self.model,train_losses,vald_loss, train_accuracies    
 
                 vald_losses += [vald_loss]
 
-        return self.model,train_losses,vald_loss, train_accuracies,train_precisions,train_recalls,vald_accuracies,vald_precisions,vald_recalls
+        return self.model,train_losses,vald_losses, train_accuracies,vald_accuracies
 
     def test(self,model):
         test_loss = 0.0

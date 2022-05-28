@@ -13,6 +13,7 @@ from architecture.classifier.classification import Classifier
 from datasets.SvdExDataset import SvdCutOffShort,SvdExtendedVoiceDataset
 from datasets.ESC50Dataset import ESC50Dataset
 import trainer.train_svd as svd_trainer
+from trainer.MulticlassTrainer import MulticlassTrainer
 import torch.nn as nn
 import torch.optim 
 
@@ -38,7 +39,7 @@ def train_model(config):
         'num_workers':2,
         'epochs':200
     }
-    trainer = svd_trainer.Trainer(dataset=dataset,model=model,optimizers=opt,critereon=loss,hyper_params=hyper_params,verbose=False)
+    trainer = MulticlassTrainer(dataset=dataset,model=model,optimizer=opt,hyper_params=hyper_params,verbose=False)
     model = trainer.train()
 
 
