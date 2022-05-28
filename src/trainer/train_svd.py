@@ -71,11 +71,9 @@ class Trainer(object):
                 with tqdm(self.train_set,disable=self.disableTQDM) as pbar:
                     for idx,sample in enumerate(pbar):                
                         x = sample['data'].to(device=self.device)
-                        y = sample['classification'].long().squeeze().to(device=self.device)
+                        y = sample['classification'].float().squeeze().to(device=self.device)
                         self.optimizers.zero_grad()
-                        outputs = self.model(x)
-                        print(outputs)
-                        print(y)
+                        outputs = self.model(x)                     
                         loss = self.critereon(outputs,y)
                         loss.backward()
                         self.optimizers.step()
