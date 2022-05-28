@@ -18,17 +18,34 @@ class ToTensor(nn.Module):
 
     def __call__(self, sample):
         return torch.from_numpy(sample).float()
-class PadWhiteNoise(nn.Module):
+
+class Inflate(nn.Module):
     """Convert ndarrays in sample to Tensors."""
 
+    def __call__(self, sample):
+        return sample.reshape(1,1,len(sample))
+
+class Deflate(nn.Module):
+    """Convert ndarrays in sample to Tensors."""
+
+    def __call__(self, sample):
+        return sample.reshape(sample.shape[2])
+
+
+class PadWhiteNoise(nn.Module):
+    """Convert ndarrays in sample to Tensors."""
+    
+    def __init__(self,length):
+        self.length = length
+
     def __call__(self,sample,sr=50000):
-        if len(sample)>50000:
+        if len(sample)>self.length:
             return sample
         
         mean = sample.mean()
         variance = sample.var()
-        noise = np.random.normal(mean,variance,sr-len(sample))/10
-        signal=np.concatenate((sample,noise))
+        noise = (torch.normal(mean.item(),variance.item(),size=(self.length-len(sample),)))/1200000
+        signal=torch.cat((sample,noise))
 
         return signal
 

@@ -10,17 +10,18 @@ from architecture.backend.yamnet.model import yamnet_category_metadata
 
 from architecture.classifier.classification import Classifier
 
-from datasets.SvdExDataset import SvdCutOffShort
+from datasets.SvdExDataset import SvdExtendedVoiceDataset
 import trainer.train_svd as svd_trainer
 import torch.nn as nn
 import torch.optim 
 from ray import tune
 import pickle
 
-dataset = SvdCutOffShort(r"/home/chenka@staff.technion.ac.il/Desktop/SVD",classification_binary=True,overfit_test = False)
 
 def train_model(config):
     print(f'test config: {config}')
+    dataset = SvdExtendedVoiceDataset(r"/home/chenka@staff.technion.ac.il/Desktop/SVD",classification_binary=True,apply_augmentations = config['augmentations'])
+
     model = Classifier(config["mlp_layers"],activation=nn.LeakyReLU(negative_slope=0.01),freeze_backend_grad=False)    
     loss = nn.BCEWithLogitsLoss()
     # params_non_frozen = filter(lambda p: p.requires_grad, model.parameters())
@@ -47,7 +48,8 @@ def train_model(config):
 
 config={
     'lr':tune.grid_search([1e-2,1e-3]),
-    'mlp_layers':[tune.grid_search([512,256,128])]
+    'mlp_layers':[tune.grid_search([512,256,128])],
+    'augmentations':[tune.grid_search(2)]
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)
     }
