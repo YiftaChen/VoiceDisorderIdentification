@@ -10,7 +10,6 @@ from architecture.backend.yamnet.model import yamnet_category_metadata
 
 from architecture.classifier.classification import Classifier
 
-from datasets.SvdExDataset import SvdCutOffShort,SvdExtendedVoiceDataset
 from datasets.ESC50Dataset import ESC50Dataset
 import trainer.train_svd as svd_trainer
 from trainer.MulticlassTrainer import MulticlassTrainer
