@@ -5,6 +5,7 @@ import torch.nn as nn
 import numpy as np
 import torchaudio.transforms as ta_trans
 from core.params import CommonParams, YAMNetParams
+import random
 
 class ToOneHot(nn.Module):
     def __call__(self, classification):
@@ -19,6 +20,7 @@ class ToTensor(nn.Module):
     def __call__(self, sample):
         return torch.from_numpy(sample).float()
 
+<<<<<<< HEAD
 class Inflate(nn.Module):
     """Convert ndarrays in sample to Tensors."""
 
@@ -40,12 +42,44 @@ class PadWhiteNoise(nn.Module):
 
     def __call__(self,sample,sr=50000):
         if len(sample)>self.length:
+=======
+class RandomFlip(nn.Module):
+    """Randomly flips the sample"""
+    def __init__(self,probability=0.5):
+        self.probability=probability
+
+    def __call__(self,sample):
+        if random.random() < self.probability:
+            return np.array(sample[::-1])
+        return sample
+        
+# class RandomFlip(nn.Module):
+#     """Randomly flips the sample"""
+#     def __init__(probability=0.5):
+#         self.probability=probability
+
+#     def __call__(self,sample):
+#         if random.random() < self.probability:
+#             return sample[::-1]
+      
+
+class PadWhiteNoise(nn.Module):
+    """Pads white noise to short audio samples."""
+
+    def __call__(self,sample,sr=50000):
+        if len(sample)>60000:
+>>>>>>> fada34207a1dd10515d25983ad7a0594463a427b
             return sample
         
         mean = sample.mean()
         variance = sample.var()
+<<<<<<< HEAD
         noise = (torch.normal(mean.item(),variance.item(),size=(self.length-len(sample),)))/1200000
         signal=torch.cat((sample,noise))
+=======
+        noise = np.random.normal(mean,variance,60000-len(sample))/10
+        signal=np.concatenate((sample,noise))
+>>>>>>> fada34207a1dd10515d25983ad7a0594463a427b
 
         return signal
 
