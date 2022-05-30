@@ -21,6 +21,7 @@ import pickle
 def train_model(config):
     print(f'test config: {config}')
     dataset = SvdExtendedVoiceDataset(r"/home/yiftach.ede@staff.technion.ac.il/Desktop/SVD",hp = config,classification_binary=True)
+    torch.multiprocessing.set_start_method('spawn')
 
     model = Classifier(config["mlp_layers"],activation=nn.LeakyReLU(negative_slope=0.01),freeze_backend_grad=False)    
     loss = nn.BCEWithLogitsLoss()
@@ -28,12 +29,12 @@ def train_model(config):
     opt = torch.optim.Adam(
         [
             dict(params=model.classifier.parameters()),
-            dict(params=model.backend.layer14.parameters(),lr=config['lr']*0.01),
-            # dict(params=model.backend.layer13.parameters(),lr=config['lr']*0.001),
+            dict(params=model.backend.layer14.parameters(),lr=config['yamnet_l14_lr']),
+            dict(params=model.backend.layer13.parameters(),lr=config['yamnet_l13_lr']),
             # dict(params=model.backend.layer12.parameters(),lr=config['lr']*0.01),
             # dict(params=model.backend.layer11.parameters(),lr=config['lr']*0.01),
         ]
-        ,lr=config["lr"])
+        ,lr=config["lr"],weight_decay = config['l2_reg'])
     hyper_params = {
         'train_batch_size':128,
         'vald_batch_size':128,
@@ -41,7 +42,7 @@ def train_model(config):
         'num_workers':2,
         'epochs':200
     }
-    trainer = svd_trainer.Trainer(dataset=dataset,model=model,optimizers=opt,critereon=loss,hyper_params=hyper_params,verbose=False)
+    trainer = svd_trainer.Trainer(dataset=dataset,model=model,optimizers=opt,critereon=loss,early_stop=50,hyper_params=hyper_params,verbose=False)
     model = trainer.train()
     
 
@@ -49,7 +50,13 @@ def train_model(config):
 config={
     'lr':tune.grid_search([1e-2,1e-3]),
     'mlp_layers':[tune.grid_search([512,256,128])],
-    'augmentations':tune.grid_search([["TimeInversion","PitchShift"],["TimeInversion"],["PitchShift"],[]])
+    'augmentations':tune.grid_search([
+        ["TimeInversion"],
+        []
+    ]),
+    'l2_reg':tune.grid_search([1e-2,1e-3]),
+    'yamnet_l14_lr':tune.grid_search([1e-3,1e-4]),
+    'yamnet_l13_lr':tune.grid_search([1e-3,1e-4,1e-5,0])
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)
     }

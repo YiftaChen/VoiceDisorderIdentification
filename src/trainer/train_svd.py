@@ -10,6 +10,7 @@ import numpy as np
 class Trainer(object):
     def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=float('inf'),device=None,verbose=False) -> None:
         # self.dl = dataloader
+        # torch.multiprocessing.set_start_method('spawn')
         self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)
         self.writer = SummaryWriter("logs/")
         self.train_set =  DataLoader(
@@ -70,6 +71,7 @@ class Trainer(object):
                 epoch_losses = []
                 with tqdm(self.train_set,disable=self.disableTQDM) as pbar:
                     for idx,sample in enumerate(pbar):                
+                        # print(f"{self.device}")
                         x = sample['data'].to(device=self.device)
                         y = sample['classification'].float().squeeze().to(device=self.device)
                         self.optimizers.zero_grad()
