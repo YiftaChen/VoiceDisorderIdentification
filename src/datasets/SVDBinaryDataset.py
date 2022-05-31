@@ -6,13 +6,14 @@ from transformations import ToTensor,Truncate,ToOneHot,WaveformToInput,PadWhiteN
 
 default_data_trans = nn.Sequential(ToTensor(),PadWhiteNoise(70000),Truncate(70000),WaveformToInput())
 
-class ESC50Dataset(AudioFolderDataset):
+class SVDBinaryDataset(AudioFolderDataset):
     def __init__(self, root_dir,data_trans=default_data_trans):
         super().__init__(root_dir,data_trans)        
 
     def getClassificationByFileName(self, fileName: str) -> int:       
-        str = os.path.basename(fileName).split('.')[0].split('-')[3]
-        classification=int(str)
-        return classification
+        return int('Healthy' not in fileName) # 0 - healthy, 1 - pathological
+
+    def fileNameFilter(self, fileName):
+        return '-a_l.' in fileName or '-a_h.' in fileName or '-a_n.' in fileName
 
 

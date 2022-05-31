@@ -13,14 +13,17 @@ class AudioFolderDataset(Dataset):
         self.data_transform = data_transform
         self.label_transform = label_transform
         for root, dirs, files in os.walk(root_dir):
-            self.files += [os.path.join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
+            self.files += [os.path.join(root,f) for f in files if not f.startswith('.') and self.fileNameFilter(f)]
        
         assert len(self.files) > 0,"Directory should not be empty"
     def __len__(self):
         return len(self.files)
 
     def getClassificationByFileName(self,fileName):
-        raise Exception("logic for getting classification by file name is required")
+        raise NotImplementedError()
+
+    def fileNameFilter(self,fileName):
+        raise NotImplementedError()
 
     def __getitem__(self, index):
         if torch.is_tensor(index):

@@ -49,6 +49,25 @@ class PadWhiteNoise(nn.Module):
 
         return signal
 
+class SetRange(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def __call__(self,sample):
+        res = (sample-torch.mean(sample))/torch.std(sample)
+        return res
+
+class AddDerivatives(nn.Module):
+    def __call__(self,sample):
+        d_sample = torch.diff(sample,axis=2)
+        dd_sample = torch.diff(d_sample,axis=2)
+        return torch.cat((sample[:,:,:-2],d_sample[:,:,:-1],dd_sample))
+
+class Derivative(nn.Module):
+    def __call__(self,sample):
+       return torch.diff(sample,axis=2)
+        
+
 class Truncate(nn.Module):
     def __init__(self,N):
         self.N=int(N)

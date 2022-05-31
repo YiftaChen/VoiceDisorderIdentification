@@ -21,6 +21,10 @@ PathologiesToIndex = {
     "Weakness of vocal cords": 10
 }
 
+IndexToPathology = {num:str for str,num in PathologiesToIndex.items()}
+
+
+
 class CommonParams():
     # for STFT
     TARGET_SAMPLE_RATE = 16000
