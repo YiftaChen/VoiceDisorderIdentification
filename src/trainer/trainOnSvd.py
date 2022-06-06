@@ -22,7 +22,7 @@ import torch.nn as nn
 import torch.optim 
 from ray import tune
 
-dataset = SVDDataset('/home/chenka@staff.technion.ac.il/Desktop/SVD')
+dataset = SVDBinaryDataset('/home/chenka@staff.technion.ac.il/Desktop/SVD')
 
 def train_model(config):
     print(f'dataset len: {len(dataset)}')
