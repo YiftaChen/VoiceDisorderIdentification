@@ -2,6 +2,7 @@ from turtle import forward
 from architecture.backend.yamnet.model import yamnet
 import torch
 import torch.nn as nn
+import torchvision.models as models
 
 class Classifier(nn.Module):
     def __init__(self,dimensions=[],out_dim=1,activation=nn.ReLU(),freeze_backend_grad=True) -> None:
@@ -16,7 +17,7 @@ class Classifier(nn.Module):
         layers+=[nn.Linear(input_dim,out_dim,bias=False)]
       
         self.classifier=nn.Sequential(*layers)
-        self.backend = yamnet(pretrained=True,remove_orig_classifier=True,freeze_grad=freeze_backend_grad)
+        self.backend = yamnet(pretrained=True,remove_orig_classifier=True,freeze_grad=freeze_backend_grad)                
         self.full_layout = nn.Sequential(self.backend,self.classifier)
 
     def forward(self,x):

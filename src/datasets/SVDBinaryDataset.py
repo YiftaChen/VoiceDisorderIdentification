@@ -14,6 +14,6 @@ class SVDBinaryDataset(AudioFolderDataset):
         return int('Healthy' not in fileName) # 0 - healthy, 1 - pathological
 
     def fileNameFilter(self, fileName):
-        return '-a_l.' in fileName or '-a_h.' in fileName or '-a_n.' in fileName
+        return '-a_n.' in fileName
 
 

@@ -59,9 +59,11 @@ class SetRange(nn.Module):
 
 class AddDerivatives(nn.Module):
     def __call__(self,sample):
-        d_sample = torch.diff(sample,axis=2)
+        d_sample = torch.diff(sample,axis=2)        
         dd_sample = torch.diff(d_sample,axis=2)
-        return torch.cat((sample[:,:,:-2],d_sample[:,:,:-1],dd_sample))
+        d_sample = F.pad(d_sample,pad=(0,1,0,0))
+        dd_sample = F.pad(dd_sample,pad=(0,2,0,0))
+        return torch.cat((sample,d_sample,dd_sample))
 
 class Derivative(nn.Module):
     def __call__(self,sample):
