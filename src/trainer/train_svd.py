@@ -6,6 +6,8 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from ray import tune
 import numpy as np
+from ray.tune.integration.wandb import wandb_mixin
+import wandb 
 
 class Trainer(object):
     def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=float('inf'),device=None,verbose=False) -> None:
@@ -49,7 +51,8 @@ class Trainer(object):
         len_valid = math.floor(ds_len*0.1)
         len_train = ds_len-len_test-len_valid              
         return torch.utils.data.random_split(ds, [len_train,len_valid,len_test]) 
-
+    
+    @wandb_mixin
     def train(self):
         train_losses = []
         vald_losses = []
@@ -60,6 +63,8 @@ class Trainer(object):
         
         last_acc=0
         runs_without_improv=0
+        max_validation_acc = 0        
+
 
         with tqdm(range(self.hp['epochs'])) as pbar_epochs:
             for idx,epoch in enumerate(pbar_epochs):
@@ -111,7 +116,7 @@ class Trainer(object):
                 vald_accuracies = []
                 vald_precisions = []
                 vald_recalls = []
-
+                vald_losses = []
                 vald_loss = 0.0
                 with tqdm(self.val_set,disable=self.disableTQDM) as t:
                         for idx,sample in enumerate(t):
@@ -145,6 +150,8 @@ class Trainer(object):
                 tune.report(valid_precision=precision,train_precision=epoch_precision.item())                        
                 tune.report(valid_recall=recall,train_recall=epoch_recall.item())                        
                 tune.report(valid_loss=loss,train_loss=epoch_loss.item())                        
+                max_validation_acc = max(max_validation_acc,accuracy)
+                wandb.run.summary["validation_accuracy.max"] = max_validation_acc
 
                 if (accuracy.item()>last_acc):
                     last_acc=accuracy.item()

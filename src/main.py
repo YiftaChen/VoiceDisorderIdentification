@@ -8,7 +8,7 @@ from architecture.backend.yamnet.params import YAMNetParams
 from architecture.backend.yamnet.model import yamnet
 from architecture.backend.yamnet.model import yamnet_category_metadata
 
-from architecture.classifier.classification import Classifier
+from architecture.classifier.classification import Wav2Vec2Classifier,HubertClassifier
 
 from datasets.SvdExDataset import SvdExtendedVoiceDataset
 import trainer.train_svd as svd_trainer
@@ -21,13 +21,12 @@ def train_model(config):
     print(f'test config: {config}')
     dataset = SvdExtendedVoiceDataset(r"/home/yiftach.ede@staff.technion.ac.il/Desktop/SVD",hp = config,classification_binary=True)
 
-    model = Classifier(config["mlp_layers"],activation=nn.LeakyReLU(negative_slope=0.01),freeze_backend_grad=False)    
+    model = HubertClassifier(config["mlp_layers"])    
     loss = nn.BCEWithLogitsLoss()
     # params_non_frozen = filter(lambda p: p.requires_grad, model.parameters())
     opt = torch.optim.Adam(
         [
             dict(params=model.classifier.parameters()),
-            dict(params=model.backend.layer14.parameters(),lr=config['lr']*0.01),
             # dict(params=model.backend.layer13.parameters(),lr=config['lr']*0.001),
             # dict(params=model.backend.layer12.parameters(),lr=config['lr']*0.01),
             # dict(params=model.backend.layer11.parameters(),lr=config['lr']*0.01),
@@ -46,7 +45,7 @@ def train_model(config):
 config={
     'lr':1e-3,
     'mlp_layers':[128],
-    'augmentations':["TimeInversion","PitchShift"]
+    'augmentations':["TimeInversion"]
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)
     }
