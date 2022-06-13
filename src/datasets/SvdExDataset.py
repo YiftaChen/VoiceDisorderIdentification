@@ -10,8 +10,8 @@ from transformations import PadWhiteNoise,ToTensor,Truncate,ToOneHot,WaveformToI
 import librosa
 from core.params import CommonParams as cfg,PathologiesToIndex
 from torch_audiomentations import Compose, PitchShift,TimeInversion,AddBackgroundNoise
-
-
+import torchaudio.transforms
+import wandb
 
 
 
@@ -43,10 +43,13 @@ default_label_transforms = nn.Sequential(ToOneHot())
 class SvdExtendedVoiceDataset(Dataset):
     """Saarbruken blah blah"""
 
-    def __init__(self, root_dir, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True):
+    def __init__(self, root_dir, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True):        
         self.root_dir = root_dir
         audiomentations = create_transformations(hp['augmentations'])
-        data_transform = nn.Sequential(ToTensor(),Inflate(),audiomentations,Deflate(),PadWhiteNoise(70000),Truncate(70000),)
+        data_transform = nn.Sequential(ToTensor(),Inflate(),audiomentations,Deflate(),Truncate(50000))
+        
+        if hp["filter_gender"] != None:
+            root_dir=os.path.join(root_dir,hp["filter_gender"])
 
         self.data_transform = data_transform
         self.label_transform = label_transform
@@ -87,15 +90,30 @@ class SvdCutOffShort(SvdExtendedVoiceDataset):
             self.files = self.files[:40]
 
 
+class SvdFilterA(SvdExtendedVoiceDataset):
+    """Saarbruken blah blah, cut off samples smaller than 0.96"""
+    def __init__(self, root_dir, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True,overfit_test = False):
+        super().__init__(root_dir,hp,label_transform,class_definitions,classification_binary)
+        import random
+        def _filter_sound(filename):
+            if hp["filter_letter"] != None:
+                return filename.split("_")[0].split("-")[1]==hp["filter_letter"]
+            return True
+        self.files = [file for file in self.files if _filter_sound(file) and librosa.get_duration(filename=file)>=1]
+        random.shuffle(self.files)
+        if overfit_test:
+            self.files = self.files[:40]
+
+
 if __name__ == "__main__":
     from tqdm import tqdm
     from torch.utils.data import DataLoader
     hp = {}
     hp["augmentations"]=["PitchShift","TimeInversion"]
-    dataset = SvdExtendedVoiceDataset(r"/Users/yiftachedelstain/Development/VoiceDisorderIdentification/data/SVD - Extended/",hp,classification_binary=True)
+    dataset = SvdFilterA(r"/home/yiftach.ede@staff.technion.ac.il/data/SVD/",hp,classification_binary=True)
     loader = DataLoader(
         dataset,
-        batch_size=128,
+        batch_size=1,
         shuffle=False,
         num_workers=2
     )

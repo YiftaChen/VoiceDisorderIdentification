@@ -15,6 +15,9 @@ class ToOneHot(nn.Module):
 
 class ToTensor(nn.Module):
     """Convert ndarrays in sample to Tensors."""
+    def __init__(self):
+        self.device = torch.device('cuda') if torch.cuda.is_available() else "cpu"    
+
 
     def __call__(self, sample):
         return torch.from_numpy(sample).float()
@@ -44,8 +47,8 @@ class PadWhiteNoise(nn.Module):
         
         mean = sample.mean()
         variance = sample.var()
-        noise = (torch.normal(mean.item(),variance.item(),size=(self.length-len(sample),)))/1200000
-        signal=torch.cat((sample,noise))
+        noise = (torch.normal(mean.item(),variance.item(),size=(self.length-len(sample),),device=sample.device))/1200000
+        signal=torch.cat((sample,noise)).to(device=sample.device)
 
         return signal
 
@@ -121,6 +124,7 @@ class WaveformToInput(torch.nn.Module):
             batched torch tsr of shape [N, C, T]
         '''
         x = waveform.mean(axis=0, keepdims=True)  # average over channels
+        
         resampler = ta_trans.Resample(sample_rate, CommonParams.TARGET_SAMPLE_RATE)
         x = resampler(x)
         x = self.mel_trans_ope(x)
@@ -147,13 +151,7 @@ class WaveformToInput(torch.nn.Module):
             patch_hop_num_chunks = (x.shape[0] - window_size_in_frames) // patch_hop_in_frames + 1
             num_frames_to_use = window_size_in_frames + (patch_hop_num_chunks - 1) * patch_hop_in_frames
             x = x[:num_frames_to_use]
-            x_in_frames = x.reshape(-1, x.shape[-1])
-            x_output = np.empty((patch_hop_num_chunks, window_size_in_frames, x.shape[-1]))
-            for i in range(patch_hop_num_chunks):
-                start_frame = i * patch_hop_in_frames
-                x_output[i] = x_in_frames[start_frame: start_frame + window_size_in_frames]
-            x = x_output.reshape(patch_hop_num_chunks, 1, window_size_in_frames, x.shape[-1])
-            x = torch.tensor(x, dtype=torch.float32)
+            x = x.reshape(1,1,-1, x.shape[-1])
         return x, spectrogram
 
 class VGGishLogMelSpectrogram(ta_trans.MelSpectrogram):
