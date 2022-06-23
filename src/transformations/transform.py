@@ -12,7 +12,11 @@ class ToOneHot(nn.Module):
             classification = torch.Tensor([classification]).to(torch.int64)
             classification = F.one_hot(classification,10).squeeze()
         return classification
-
+class CFloat(nn.Module):
+    def __call__(self,data):
+        # print(data.dtype)
+        data = data.cfloat()
+        return data
 class ToTensor(nn.Module):
     """Convert ndarrays in sample to Tensors."""
     def __init__(self):
@@ -44,13 +48,13 @@ class PadWhiteNoise(nn.Module):
     def __call__(self,sample,sr=50000):
         if len(sample)>self.length:
             return sample
-        
         mean = sample.mean()
         variance = sample.var()
         noise = (torch.normal(mean.item(),variance.item(),size=(self.length-len(sample),),device=sample.device))/1200000
         signal=torch.cat((sample,noise)).to(device=sample.device)
 
         return signal
+    
 
 class Truncate(nn.Module):
     def __init__(self,N):
