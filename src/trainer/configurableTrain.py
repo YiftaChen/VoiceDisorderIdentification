@@ -32,7 +32,9 @@ def train_model(config):
     wandb.run.name = f"WindowedDatasetAblation{wandb.run.name.split('_')[-1]}"
     wandb.run.save()
     torch.autograd.set_detect_anomaly(True)
-    datasets = create_datasets(r"/home/yiftach.ede/data/SVD",split=(0.8,0.1,0.1),hp=config,filter_gender=None,delta=config["delta"])
+    directory = core.params.dataset_locations[socket.gethostname()]
+
+    datasets = create_datasets(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=None,delta=config["delta"])
 
     # torch.multiprocessing.set_start_method('spawn')
 

@@ -7,6 +7,10 @@ yamnet params are retrieved from:
 '''
 import json
 
+dataset_locations = {
+    "sipl-gpu40-u.staff.technion.ac.il":"/home/yiftach.ede@staff.technion.ac.il/data/SVD",
+    "sipl-gpu2-u.staff.technion.ac.il":"/home/yiftach.ede/data/SVD"
+}
 PathologiesToIndex = {
     "Healthy": 0,
     "Cancer": 1,
