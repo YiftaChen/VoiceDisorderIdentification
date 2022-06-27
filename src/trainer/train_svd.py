@@ -10,10 +10,10 @@ from ray.tune.integration.wandb import wandb_mixin
 import wandb 
 
 class Trainer(object):
-    def __init__(self,dataset,model,optimizers,critereon,hyper_params,early_stop=float('inf'),device=None,verbose=False) -> None:
+    def __init__(self,datasets,model,optimizers,critereon,hyper_params,early_stop=float('inf'),device=None,verbose=False) -> None:
         # self.dl = dataloader
         # torch.multiprocessing.set_start_method('spawn')
-        self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)
+        self.train_set, self.val_set, self.test_set = datasets
         self.writer = SummaryWriter("logs/")
         self.train_set =  DataLoader(
             self.train_set,

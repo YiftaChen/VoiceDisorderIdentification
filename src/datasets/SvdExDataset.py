@@ -10,11 +10,10 @@ from architecture.backend.yamnet.model import Identity
 from transformations import PadWhiteNoise,ToTensor,Truncate,ToOneHot,WaveformToInput,Inflate,Deflate,CFloat
 import librosa
 from core.params import CommonParams as cfg,PathologiesToIndex
-from torch_audiomentations import Compose, PitchShift,TimeInversion,AddBackgroundNoise
+# from torch_audiomentations import Compose, PitchShift,TimeInversion,AddBackgroundNoise
 from  torchaudio.transforms import Spectrogram,TimeStretch, TimeMasking, FrequencyMasking, InverseSpectrogram,GriffinLim
 import wandb
-
-WINDOW_SIZE = 50000
+import numpy as np
 
 def create_transformations(augmentations):
     print(augmentations)
@@ -32,30 +31,38 @@ def create_transformations(augmentations):
     transforms = [Spectrogram()]+ transforms + [CFloat(),InverseSpectrogram()]
     return nn.Sequential(*transforms)
 
-# WaveformToInput())
 default_label_transforms = nn.Sequential(ToOneHot())
+
+def create_datasets(root_dir,split:tuple,hp,filter_gender=None,**kwargs)->list():
+    assert sum(split)==1, f"Splits fraction array should sum up to 1"
+    split = np.cumsum(split)
+    files_array = []
+    if hp["filter_gender"] != None:
+        root_dir=os.path.join(root_dir,hp["filter_gender"])
+    for root, dirs, files in os.walk(root_dir):
+        files_array += [os.path.join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
+
+    import random
+    random.shuffle(files)
+    split = [int(s * len(files_array))for s in split][:-1]
+    files_split = np.split(files_array, split)
+    return [SvdWindowedDataset(sp,hp,**kwargs) for sp in files_split]
 
 # TODO: make this inherit AudioFolderDataset
 class SvdExtendedVoiceDataset(Dataset):
     """Saarbruken blah blah"""
 
-    def __init__(self, root_dir, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True):        
-        self.root_dir = root_dir
+    def __init__(self, files, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True):        
     # audiomentations = create_transformations(hp['augmentations'])
         data_transform = nn.Sequential(ToTensor(),PadWhiteNoise(50000),Truncate(50000))
         
-        if hp["filter_gender"] != None:
-            root_dir=os.path.join(root_dir,hp["filter_gender"])
-
         self.data_transform = data_transform
         self.label_transform = label_transform
         self.classification_binary = classification_binary
         self.class_definitions=class_definitions if class_definitions!= None else PathologiesToIndex# Placeholder for actual definitions
-        self.files = []
-        for root, dirs, files in os.walk(root_dir):
-            self.files += [os.path.join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
+        self.files = files
             # assert len(files) == 0 or (len(files) != 0 and 
-        assert len(self.files) > 0,"Directory should not be empty"
+        assert len(self.files) > 0,f"Directory should not be empty, it is {self.files}"
     
     def _load_wav(self,wav_file):
         return wavfile.read(wav_file)
@@ -81,8 +88,8 @@ class SvdExtendedVoiceDataset(Dataset):
 
 class SvdCutOffShort(SvdExtendedVoiceDataset):
     """Saarbruken blah blah, cut off samples smaller than 0.96"""
-    def __init__(self, root_dir, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True,overfit_test = False):
-        super().__init__(root_dir,hp,label_transform,class_definitions,classification_binary)
+    def __init__(self, files, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True,overfit_test = False):
+        super().__init__(files,hp,label_transform,class_definitions,classification_binary)
         import random
         self.files = [file for file in self.files if librosa.get_duration(filename=file)>=cfg.VOICE_SAMPLE_MIN_LENGTH]
         random.shuffle(self.files)
@@ -92,8 +99,8 @@ class SvdCutOffShort(SvdExtendedVoiceDataset):
 
 class SvdWindowedDataset(SvdExtendedVoiceDataset):
     """Saarbruken blah blah, cut off samples smaller than 0.96"""
-    def __init__(self, root_dir, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True,overfit_test = False,delta=0.5):
-        super().__init__(root_dir,hp,label_transform,class_definitions,classification_binary)
+    def __init__(self, files, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True,overfit_test = False,delta=1):
+        super().__init__(files,hp,label_transform,class_definitions,classification_binary)
         import random
         def _filter_pitch(filename):
             if hp["filter_pitch"] != None:
@@ -105,21 +112,19 @@ class SvdWindowedDataset(SvdExtendedVoiceDataset):
                 return filename.split("_")[0].split("-")[1] in hp["filter_letter"]
             return True
         self.delta=delta
-        self.files = [file for file in self.files if _filter_sound(file) and _filter_pitch(file)][:100]
-        # print(self.files)
+        self.files = [file for file in self.files if _filter_sound(file) and _filter_pitch(file)]
         self.files = self._inflate_sound_files(self.files)
-        # print(self.files)
-        random.shuffle(self.files)
+        
         if overfit_test:
+            random.shuffle(self.files)
             self.files = self.files[:40]
     
     def _load_wav(self,wav_file):
         window_index = wav_file["window_index"]
         file_path = wav_file["path"]
         sample_rate,data = wavfile.read(file_path)
-        start_index = int(self.delta*window_index*WINDOW_SIZE)
-        end_index = int(self.delta*(window_index+1)*WINDOW_SIZE)
-        print(f"window index {window_index}")
+        start_index = int(self.delta*window_index*cfg.SVD_SAMPLE_RATE)
+        end_index = int(self.delta*(window_index+1)*cfg.SVD_SAMPLE_RATE)
         return sample_rate,data[start_index:end_index]
     def _get_class(self,wav_file):
         wav_file_path = wav_file["path"]
@@ -127,53 +132,19 @@ class SvdWindowedDataset(SvdExtendedVoiceDataset):
 
     def _inflate_sound_files(self,files):
         def get_window_count(f):
-            length = librosa.get_duration(filename=f)*WINDOW_SIZE
-            # print(f)
-            # if(length>50000):
-                # print(f"file is {f} length is {length}")
-            length = 0 if length-WINDOW_SIZE<0 else length-WINDOW_SIZE
-            return int(length/(self.delta*WINDOW_SIZE))+1
+            length = librosa.get_duration(filename=f)*cfg.SVD_SAMPLE_RATE
+            length = 0 if length-cfg.SVD_SAMPLE_RATE<0 else length-cfg.SVD_SAMPLE_RATE
+            return int(length/(self.delta*cfg.SVD_SAMPLE_RATE))+1
         return [{'path':file,'window_index':i} for file in files for i in range(get_window_count(file))]
         
-
-class SvdFilterBySounds(SvdExtendedVoiceDataset):
-    """Saarbruken blah blah, cut off samples smaller than 0.96"""
-    def __init__(self, root_dir, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True,overfit_test = False):
-        super().__init__(root_dir,hp,label_transform,class_definitions,classification_binary)
-        import random
-        def _filter_pitch(filename):
-            if hp["filter_pitch"] != None:
-                return filename.split("_")[1].split(".")[0] in hp["filter_pitch"]
-            return True
-        def _filter_sound(filename):
-            if hp["filter_letter"] != None:
-                # assert False, f"filename split {filename.split('_')}"
-                return filename.split("_")[0].split("-")[1] in hp["filter_letter"]
-            return True
-        self.files = [file for file in self.files if _filter_sound(file) and _filter_pitch(file)]
-        random.shuffle(self.files)
-        if overfit_test:
-            self.files = self.files[:40]
-
-
-
-
 if __name__ == "__main__":
     from tqdm import tqdm
     from torch.utils.data import DataLoader
+
     hp = {}
     hp["augmentations"] = None
     hp["filter_pitch"] = None
     hp["filter_letter"] = None
     hp["filter_gender"] = None
-    # hp["augmentations"]=["FrequencyMasking","TimeMasking","TimeStretch"]
-    dataset = SvdWindowedDataset(r"/home/yiftach.ede@staff.technion.ac.il/data/SVD/",hp,classification_binary=True)
-    loader = DataLoader(
-        dataset,
-        batch_size=200,
-        shuffle=False,
-        num_workers=2
-    )
-    for file in loader:
-        print(file)
-        break
+    sets = create_datasets(r"/home/yiftach.ede/data/SVD",split=(0.8,0.1,0.1),hp=hp,filter_gender=None,delta=0.5)
+    print([len(setd) for setd in sets])

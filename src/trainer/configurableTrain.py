@@ -9,7 +9,7 @@ from architecture.backend.yamnet.model import yamnet
 from architecture.backend.yamnet.model import yamnet_category_metadata
 
 from architecture.classifier.classification import YamnetClassifier,Wav2Vec2Classifier,DistilHUBERTClassifier,HubertClassifier
-from datasets.SvdExDataset import SvdExtendedVoiceDataset,SvdFilterBySounds
+from datasets.SvdExDataset import SvdExtendedVoiceDataset,SvdFilterBySounds,SvdWindowedDataset,create_datasets
 import trainer.train_svd as svd_trainer
 import torch.nn as nn
 import torch.optim 
@@ -29,13 +29,14 @@ from itertools import chain, combinations
 count = 0
 @wandb_mixin
 def train_model(config):
-    wandb.run.name = f"Wav2vec2Ablation_{wandb.run.name.split('_')[-1]}"
+    wandb.run.name = f"WindowedDatasetAblation{wandb.run.name.split('_')[-1]}"
     wandb.run.save()
     torch.autograd.set_detect_anomaly(True)
-    dataset = SvdFilterBySounds(r"/home/yiftach.ede@staff.technion.ac.il/Desktop/SVD",hp = config,classification_binary=True)
+    datasets = create_datasets(r"/home/yiftach.ede/data/SVD",split=(0.8,0.1,0.1),hp=config,filter_gender=None,delta=config["delta"])
+
     # torch.multiprocessing.set_start_method('spawn')
 
-    model = Wav2Vec2Classifier(config["mlp_layers"]).to(device="cuda:0")  
+    model = HubertClassifier(config["mlp_layers"]).to(device="cuda:0")  
     loss = nn.BCEWithLogitsLoss()
     # params_non_frozen = filter(lambda p: p.requires_grad, model.parameters())
     opt = torch.optim.Adam(
@@ -55,7 +56,7 @@ def train_model(config):
         'num_workers':2,
         'epochs':50
     }
-    trainer = svd_trainer.Trainer(dataset=dataset,model=model,optimizers=opt,critereon=loss,early_stop=200,hyper_params=hyper_params,verbose=False)
+    trainer = svd_trainer.Trainer(datasets=datasets,model=model,optimizers=opt,critereon=loss,early_stop=200,hyper_params=hyper_params,verbose=False)
     model = trainer.train()
     
 def powerset(iterable):
@@ -69,6 +70,7 @@ config={
     'backend_encoder_lr':tune.grid_search([1e-4,1e-5]),
     'augmentations':None,
     'mlp_layers':[],
+    'delta':tune.grid_search([0.25,0.5,0.75,1]),
     # 'configuration':tune.grid_search(["base","large"]),
     'filter_letter':None,
     'filter_pitch':None,
@@ -78,7 +80,7 @@ config={
     'l2_reg':tune.grid_search([0.001,0.01]),
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)
-    "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"Wav2vec2Ablation"},
+    "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"WindowedDatasetAblation"},
 
     }
             
@@ -101,7 +103,7 @@ chosen_config={
     }
 # ray.init(address="132.68.58.49:6123")
 
-analysis = tune.run(train_model,config=config,resources_per_trial={'gpu':1},verbose=False,name="Wav2vec2AblationStudy",
+analysis = tune.run(train_model,config=config,resources_per_trial={'gpu':1},verbose=False,name="WindowedDatasetAblation",
 callbacks=[WandbLoggerCallback(
         project="VoiceDisorder",
         api_key="19e347e092a58ca11a380ad43bd1fd5103f4d14a",
