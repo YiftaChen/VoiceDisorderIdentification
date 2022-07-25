@@ -92,7 +92,8 @@ class Trainer(object):
                         accuracy = torch.sum(predictions==y)/len_predictions      
                         precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
                         recall = torch.sum(predictions*(predictions==y))/torch.sum(y)
-                        f1 = f1_score(y,predictions)
+                        # assert False, f"y device {y.cpu()} prediction device {predictions.device}"
+                        f1 = f1_score(y.cpu(),predictions.cpu())
 
                         train_accuracies += [accuracy]
                         train_precisions += [precision]
@@ -138,7 +139,7 @@ class Trainer(object):
                                 accuracy = torch.sum(predictions==y)/len_predictions             
                                 precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
                                 recall = torch.sum(predictions*(predictions==y))/torch.sum(y)
-                                f1 = f1_score(y,predictions)
+                                f1 = f1_score(y.cpu(),predictions.cpu())
 
                                 vald_accuracies += [accuracy.cpu().item()]
                                 vald_precisions += [precision.cpu().item()]
@@ -157,7 +158,7 @@ class Trainer(object):
                 tune.report(valid_precision=precision,train_precision=epoch_precision.item())                        
                 tune.report(valid_recall=recall,train_recall=epoch_recall.item())                        
                 tune.report(valid_loss=loss,train_loss=epoch_loss.item())                        
-                tune.report(valid_f1=f1,train_loss=epoch_f1_score)                        
+                tune.report(valid_f1=f1,train_f1=epoch_f1_score)                        
 
                 max_validation_acc = max(max_validation_acc,accuracy)
                 wandb.run.summary["validation_accuracy.max"] = max_validation_acc

@@ -9,7 +9,7 @@ from architecture.backend.yamnet.model import yamnet
 from architecture.backend.yamnet.model import yamnet_category_metadata
 
 from architecture.classifier.classification import YamnetClassifier,Wav2Vec2Classifier,DistilHUBERTClassifier,HubertClassifier
-from datasets.SvdExDataset import SvdExtendedVoiceDataset,SvdFilterBySounds,SvdWindowedDataset,create_datasets
+from datasets.SvdExDataset import create_datasets
 import trainer.train_svd as svd_trainer
 import torch.nn as nn
 import torch.optim 
@@ -75,7 +75,7 @@ config={
     'backend_encoder_lr':tune.grid_search([1e-4,1e-5]),
     'augmentations':None,
     'mlp_layers':[],
-    'delta':tune.grid_search([0.25,0.5,0.75,1]),
+    'delta':tune.grid_search([10]),
     # 'configuration':tune.grid_search(["base","large"]),
     'filter_letter':None,
     'filter_pitch':None,
