@@ -16,6 +16,9 @@ import torch.optim
 from ray import tune
 import ray
 import pickle
+import socket
+import core
+
 from ray.tune.integration.wandb import (
     WandbLoggerCallback,
     WandbTrainableMixin,

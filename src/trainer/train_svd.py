@@ -7,6 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from ray import tune
 import numpy as np
 from ray.tune.integration.wandb import wandb_mixin
+from sklearn.metrics import f1_score
 import wandb 
 
 class Trainer(object):
@@ -60,7 +61,7 @@ class Trainer(object):
         train_accuracies = []
         train_precisions = []
         train_recalls = []
-        
+        train_f1_scores = []
         last_acc=0
         runs_without_improv=0
         max_validation_acc = 0        
@@ -74,6 +75,7 @@ class Trainer(object):
                 epoch_precisions = []
                 epoch_recalls = []
                 epoch_losses = []
+                epoch_f1_scores = []
                 with tqdm(self.train_set,disable=self.disableTQDM) as pbar:
                     for idx,sample in enumerate(pbar):                
                         # print(f"{self.device}")
@@ -90,22 +92,26 @@ class Trainer(object):
                         accuracy = torch.sum(predictions==y)/len_predictions      
                         precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
                         recall = torch.sum(predictions*(predictions==y))/torch.sum(y)
+                        f1 = f1_score(y,predictions)
 
                         train_accuracies += [accuracy]
                         train_precisions += [precision]
                         train_recalls += [recall]
-                        
+                        train_f1_scores += [f1]
+
                         epoch_accuracies += [accuracy]
                         epoch_precisions += [precision]
                         epoch_recalls += [recall]
                         epoch_losses += [loss]
+                        epoch_f1_scores += [f1]
                         pbar.set_description(f"train epoch {epoch}, train loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")
                         if idx == len(self.train_set)-1 :
                             epoch_accuracy = sum(epoch_accuracies)/len(epoch_accuracies)
                             epoch_precision = sum(epoch_precisions)/len(epoch_precisions)
                             epoch_recall = sum(epoch_recalls)/len(epoch_recalls)
                             epoch_loss = sum(epoch_losses)/len(epoch_losses)
-                            pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%, Mean Precision:{epoch_precision*100}%, Mean Recall:{epoch_recall*100}%")
+                            epoch_f1_score = sum(epoch_f1_scores)/len(epoch_f1_scores)
+                            pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean F1 Score {epoch_f1_score}, Mean Accuracy:{epoch_accuracy*100}%, Mean Precision:{epoch_precision*100}%, Mean Recall:{epoch_recall*100}%")
 
                         # self.writer.add_scalar('Loss/train',loss.item(),idx)
                         # self.writer.add_scalar('Accuracy/train',accuracy,idx)
@@ -117,6 +123,7 @@ class Trainer(object):
                 vald_precisions = []
                 vald_recalls = []
                 vald_losses = []
+                vald_f1_scores = []
                 vald_loss = 0.0
                 with tqdm(self.val_set,disable=self.disableTQDM) as t:
                         for idx,sample in enumerate(t):
@@ -131,25 +138,27 @@ class Trainer(object):
                                 accuracy = torch.sum(predictions==y)/len_predictions             
                                 precision = torch.sum(predictions*(predictions==y))/torch.sum(predictions)
                                 recall = torch.sum(predictions*(predictions==y))/torch.sum(y)
+                                f1 = f1_score(y,predictions)
+
                                 vald_accuracies += [accuracy.cpu().item()]
                                 vald_precisions += [precision.cpu().item()]
                                 vald_recalls += [recall.cpu().item()]
                                 vald_losses += [loss.cpu().item()]
-                            # self.writer.add_scalar('Loss/validation',loss.item(),idx)
-                            # self.writer.add_scalar('Accuracy/validation',accuracy,idx)
-                            # self.writer.add_scalar('Precision/validation',precision,idx)
-                            # self.writer.add_scalar('Recall/validation',recall,idx)
-                            
-                            t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, Precision {precision*100}%, Recall {recall*100}%")            
+                                vald_f1_scores += [f1]
+                            t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}% F1 score {f1}, Precision {precision*100}%, Recall {recall*100}%")            
 
                 accuracy = np.array(vald_accuracies).mean()
                 precision = np.array(vald_precisions).mean()
                 recall = np.array(vald_recalls).mean()
                 loss = np.array(vald_losses).mean()
+                f1 = np.array(vald_f1_scores).mean()
+            
                 tune.report(valid_acc=accuracy,train_acc=epoch_accuracy.item())                        
                 tune.report(valid_precision=precision,train_precision=epoch_precision.item())                        
                 tune.report(valid_recall=recall,train_recall=epoch_recall.item())                        
                 tune.report(valid_loss=loss,train_loss=epoch_loss.item())                        
+                tune.report(valid_f1=f1,train_loss=epoch_f1_score)                        
+
                 max_validation_acc = max(max_validation_acc,accuracy)
                 wandb.run.summary["validation_accuracy.max"] = max_validation_acc
 
