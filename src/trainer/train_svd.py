@@ -76,13 +76,17 @@ class Trainer(object):
                 epoch_recalls = []
                 epoch_losses = []
                 epoch_f1_scores = []
+                train_preds = []
+                train_gt = []
                 with tqdm(self.train_set,disable=self.disableTQDM) as pbar:
                     for idx,sample in enumerate(pbar):                
                         # print(f"{self.device}")
                         x = sample['data'].to(device=self.device)
                         y = sample['classification'].float().squeeze().to(device=self.device)
                         self.optimizers.zero_grad()
-                        outputs = self.model(x)                     
+                        outputs = self.model(x)       
+                        train_preds = np.concatenate((train_preds,outputs.cpu().detach().numpy()))
+                        train_gt = np.concatenate((train_gt,y.cpu().detach().numpy()))
                         loss = self.critereon(outputs,y)
                         loss.backward()
                         self.optimizers.step()
@@ -118,13 +122,15 @@ class Trainer(object):
                         # self.writer.add_scalar('Accuracy/train',accuracy,idx)
                         # self.writer.add_scalar('Precision/train',precision,idx)
                         # self.writer.add_scalar('Recall/train',recall,idx)
-
                 train_losses += [running_loss]
                 vald_accuracies = []
                 vald_precisions = []
                 vald_recalls = []
                 vald_losses = []
                 vald_f1_scores = []
+                vald_preds = []
+                vald_gt = []
+
                 vald_loss = 0.0
                 with tqdm(self.val_set,disable=self.disableTQDM) as t:
                         for idx,sample in enumerate(t):
@@ -132,6 +138,8 @@ class Trainer(object):
                             y = sample['classification'].float().squeeze().to(device=self.device)
                             with torch.no_grad():
                                 outputs = self.model(x)
+                                vald_preds = np.concatenate((vald_preds,outputs.cpu().detach().numpy()))
+                                vald_gt = np.concatenate((vald_gt,y.cpu().detach().numpy()))
                                 loss = self.critereon(outputs,y)
                                 vald_loss += loss.item() 
                                 predictions = outputs.detach() > 0
@@ -159,7 +167,17 @@ class Trainer(object):
                 tune.report(valid_recall=recall,train_recall=epoch_recall.item())                        
                 tune.report(valid_loss=loss,train_loss=epoch_loss.item())                        
                 tune.report(valid_f1=f1,train_f1=epoch_f1_score)                        
+                
 
+
+                if (max_validation_acc < accuracy):
+                        wandb.log({"best_epoch_train_confusion_matrix" : wandb.plot.confusion_matrix(
+                            y_true=train_gt, preds=train_preds > 0,
+                            class_names=["Sick","Healthy"])})
+                        wandb.log({"best_epoch_validation_confusion_matrix" : wandb.plot.confusion_matrix(
+                            y_true=vald_gt, preds=vald_preds > 0,
+                            class_names=["Sick","Healthy"])})
+                
                 max_validation_acc = max(max_validation_acc,accuracy)
                 wandb.run.summary["validation_accuracy.max"] = max_validation_acc
 

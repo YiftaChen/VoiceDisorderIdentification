@@ -32,23 +32,25 @@ from itertools import chain, combinations
 count = 0
 @wandb_mixin
 def train_model(config):
-    wandb.run.name = f"WindowedDatasetAblation{wandb.run.name.split('_')[-1]}"
+    wandb.run.name = f"FullyConnectedAblation{wandb.run.name.split('_')[-1]}"
     wandb.run.save()
     torch.autograd.set_detect_anomaly(True)
     directory = core.params.dataset_locations[socket.gethostname()]
 
-    datasets = create_datasets(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=None,delta=config["delta"])
+    datasets = create_datasets(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=config['filter_gender'])
 
     # torch.multiprocessing.set_start_method('spawn')
 
     model = HubertClassifier(config["mlp_layers"]).to(device="cuda:0")  
+    print(model)
     loss = nn.BCEWithLogitsLoss()
     # params_non_frozen = filter(lambda p: p.requires_grad, model.parameters())
+    # assert False, f"model params {model}"
+
     opt = torch.optim.Adam(
         [
             dict(params=model.classifier.parameters()),
-            # dict(params=model.backend.parameters(),lr=config['backend_encoder_lr']),
-            dict(params=model.model.parameters(),lr=config['backend_encoder_lr']),
+            dict(params=model.model.encoder.parameters(),lr=config['backend_encoder_lr']),
             # dict(params=model.backend.layer13.parameters(),lr=config['yamnet_l13_lr']),
             # dict(params=model.backend.layer12.parameters(),lr=config['lr']*0.01),
             # dict(params=model.backend.layer11.parameters(),lr=config['lr']*0.01),
@@ -71,21 +73,21 @@ def powerset(iterable):
 
 
 config={
-    'lr':tune.grid_search([1e-2,1e-3]),
-    'backend_encoder_lr':tune.grid_search([1e-4,1e-5]),
+    'lr':tune.grid_search([2.45e-2,2.45e-3]),
+    'backend_encoder_lr':tune.grid_search([2.45e-4,2.45e-5]),
     'augmentations':None,
     'mlp_layers':[],
-    'delta':tune.grid_search([10]),
-    # 'configuration':tune.grid_search(["base","large"]),
+    # 'delta':tune.grid_search([10]),
+    'configuration':tune.grid_search(["base","large"]),
     'filter_letter':None,
     'filter_pitch':None,
     # 'filter_letter':tune.grid_search(list(powerset(["a","i","u"]))),
     # 'filter_pitch':tune.grid_search(list(powerset(["l","n","lhl","h"]))),
-    'filter_gender':None,
-    'l2_reg':tune.grid_search([0.001,0.01]),
+    'filter_gender':tune.grid_search(['female','male',None]),
+    'l2_reg':tune.grid_search([0.001,0.01,0]),
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)
-    "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"WindowedDatasetAblation"},
+    "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"FullyConnectedClassifier"},
 
     }
             

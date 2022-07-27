@@ -40,13 +40,13 @@ def create_datasets(root_dir,split:tuple,hp,filter_gender=None,**kwargs)->list()
     if hp["filter_gender"] != None:
         root_dir=os.path.join(root_dir,hp["filter_gender"])
     for root, dirs, files in os.walk(root_dir):
-        files_array += [os.path.join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
+        files_array += [os.path. join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
 
     import random
     random.shuffle(files)
     split = [int(s * len(files_array))for s in split][:-1]
     files_split = np.split(files_array, split)
-    return [SvdWindowedDataset(sp,hp,**kwargs) for sp in files_split]
+    return [SvdExtendedVoiceDataset(sp,hp,**kwargs) for sp in files_split]
 
 # TODO: make this inherit AudioFolderDataset
 class SvdExtendedVoiceDataset(Dataset):
@@ -67,7 +67,7 @@ class SvdExtendedVoiceDataset(Dataset):
     def _load_wav(self,wav_file):
         return wavfile.read(wav_file)
     def _get_class(self,wav_file_path):
-        return self.class_definitions[wav_file_path.split('/')[-3]]
+        return self.class_definitions[wav_file_path.split('/')[-3]],  wav_file_path.split('/')[-3]
     def __len__(self):
         return len(self.files)
     def __getitem__(self, index):
@@ -76,15 +76,15 @@ class SvdExtendedVoiceDataset(Dataset):
         if isinstance(index,list):
             index = index[0]
         samplerate, data = self._load_wav(self.files[index])
-        classification = self._get_class(self.files[index])
+        classification_index,classification = self._get_class(self.files[index])
         
         if self.data_transform != None:
             data = self.data_transform(data)
         if self.label_transform != None and not self.classification_binary:
             label = self.label_transform(classification)
         if self.classification_binary:
-            label = classification!=0
-        return {'data':data, 'sampling_rate':samplerate,'classification':label}
+            label = classification_index!=0
+        return {'data':data, 'sampling_rate':samplerate,'classification':label,'original_class':classification}
 
 class SvdCutOffShort(SvdExtendedVoiceDataset):
     """Saarbruken blah blah, cut off samples smaller than 0.96"""
@@ -128,7 +128,7 @@ class SvdWindowedDataset(SvdExtendedVoiceDataset):
         return sample_rate,data[start_index:end_index]
     def _get_class(self,wav_file):
         wav_file_path = wav_file["path"]
-        return self.class_definitions[wav_file_path.split('/')[-3]]
+        return self.class_definitions[wav_file_path.split('/')[-3]], wav_file_path.split('/')[-3]
 
     def _inflate_sound_files(self,files):
         def get_window_count(f):
@@ -146,5 +146,5 @@ if __name__ == "__main__":
     hp["filter_pitch"] = None
     hp["filter_letter"] = None
     hp["filter_gender"] = None
-    sets = create_datasets(r"/home/yiftach.ede/data/SVD",split=(0.8,0.1,0.1),hp=hp,filter_gender=None,delta=0.5)
-    print([len(setd) for setd in sets])
+    sets = create_datasets(r"/home/yiftach.ede@staff.technion.ac.il/data/SVD",split=(0.8,0.1,0.1),hp=hp,filter_gender=None)
+    print(sets[0])

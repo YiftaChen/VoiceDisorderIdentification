@@ -1,4 +1,6 @@
 from turtle import forward
+
+from numpy import inner
 from architecture.backend.yamnet.model import yamnet
 import torch
 import torch.nn as nn
@@ -64,6 +66,33 @@ class SinusoidalActivation(nn.Module):
     def forward(self,x):
         return torch.sin(x)
 
+class FullyConnectedClassificationHead(nn.Module):
+    def __init__(self,input_dim,out_dim,activation=nn.ReLU()):
+        super().__init__()
+        layers=[nn.Linear(input_dim,1280,bias=False),nn.BatchNorm1d(num_features=1280),activation,nn.Linear(1280,out_dim,bias=False)]
+        self.layers = nn.Sequential(*layers)
+    def forward(self,x):
+        x = x.reshape(x.shape[0],-1)
+        return self.layers(x)
+
+class ConvolutionalClassificationHead(nn.Module):
+    def __init__(self,input_dim,out_dim,activation=nn.ReLU(), kernels=[5,5,5]):
+        super().__init__()
+        layers = []
+        inner_dim = [1,1,1]
+        inp = input_dim
+        for kernel,in_dim in zip(kernels,inner_dim):
+            layers += [nn.Conv2d(inp,in_dim,kernel_size=(3,kernel),stride=(1,2)),nn.BatchNorm2d(in_dim),activation]
+            inp=in_dim
+        layers_fully_connected = [nn.Linear(3999,512,bias=False),nn.BatchNorm1d(num_features=512),activation,nn.Linear(512,out_dim,bias=False)]
+        self.layers = nn.Sequential(*layers)
+        self.layers_fully_connected = nn.Sequential(*layers_fully_connected)
+    def forward(self,x):
+        x = x.unsqueeze(-1).reshape(x.shape[0],1,x.shape[1],x.shape[2])
+        x = self.layers(x)
+        x = x.reshape(x.shape[0],-1)
+        return self.layers_fully_connected(x)
+
 class Wav2Vec2Classifier(nn.Module):
     def __init__(self,dimensions=[],configuration="base",out_dim=1,activation=nn.ReLU(),freeze_backend_grad=True) -> None:
         super().__init__()
@@ -82,8 +111,8 @@ class Wav2Vec2Classifier(nn.Module):
         #                 activation]
         #     input_dim = dimension
         input_dim = input_dim*49
-
         layers+=[nn.Linear(input_dim,1280,bias=False),nn.BatchNorm1d(num_features=1280),activation,nn.Linear(1280,out_dim,bias=False)]
+        
       
         self.classifier=nn.Sequential(*layers)
         # self.backend = s3prl.hub.hubert()    
@@ -125,10 +154,8 @@ class HubertClassifier(nn.Module):
         #                 activation]
         #     input_dim = dimension
         input_dim = input_dim*49
-
-        layers+=[nn.Linear(input_dim,1280,bias=False),nn.BatchNorm1d(num_features=1280),activation,nn.Linear(1280,out_dim,bias=False)]
       
-        self.classifier=nn.Sequential(*layers)
+        self.classifier=FullyConnectedClassificationHead(input_dim,out_dim)
         # self.backend = s3prl.hub.hubert()    
         if freeze_backend_grad:
             for param in self.model.parameters():
@@ -143,5 +170,6 @@ class HubertClassifier(nn.Module):
         x = x.reshape((x.shape[0],x.shape[-1]))
         x = torchaudio.functional.resample(x, 50000, self.bundle.sample_rate)        
         x,y = self.model(x)
-        x = x.reshape(x.shape[0],-1)
+        # x = self.classifier(x)
+        # x = x.reshape(x.shape[0],-1)
         return self.classifier(x).squeeze()
