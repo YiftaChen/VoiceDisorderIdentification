@@ -9,6 +9,7 @@ from architecture.backend.yamnet.model import yamnet
 from architecture.backend.yamnet.model import yamnet_category_metadata
 
 from architecture.classifier.classification import YamnetClassifier,Wav2Vec2Classifier,DistilHUBERTClassifier,HubertClassifier
+from architecture.classifier.basicConvClassification import SincNETClassifier
 from datasets.SvdExDataset import create_datasets
 import trainer.train_svd as svd_trainer
 import torch.nn as nn
@@ -18,6 +19,7 @@ import ray
 import pickle
 import socket
 import core
+
 
 from ray.tune.integration.wandb import (
     WandbLoggerCallback,
@@ -32,7 +34,7 @@ from itertools import chain, combinations
 count = 0
 @wandb_mixin
 def train_model(config):
-    run_name =  f"ConvolutionalClassificationHead{wandb.run.name.split('_')[-1]}"
+    run_name = f"sincNET_Test{wandb.run.name.split('_')[-1]}"
     wandb.run.name = run_name
     wandb.run.save()
     torch.autograd.set_detect_anomaly(True)
@@ -42,16 +44,18 @@ def train_model(config):
 
     # torch.multiprocessing.set_start_method('spawn')
 
-    model = HubertClassifier(config["mlp_layers"]).to(device="cuda:0")  
-    print(model)
+    # model = HubertClassifier(config["mlp_layers"]).to(device="cuda:0")  
+    model = SincNETClassifier().to(device="cuda:0")    
+
     loss = nn.BCEWithLogitsLoss()
     # params_non_frozen = filter(lambda p: p.requires_grad, model.parameters())
     # assert False, f"model params {model}"
 
     opt = torch.optim.Adam(
         [
-            dict(params=model.classifier.parameters()),
-            dict(params=model.model.encoder.parameters(),lr=config['backend_encoder_lr']),
+            dict(params=model.parameters())
+            # dict(params=model.classifier.parameters()),
+            # dict(params=model.model.encoder.parameters(),lr=config['backend_encoder_lr']),
             # dict(params=model.backend.layer13.parameters(),lr=config['yamnet_l13_lr']),
             # dict(params=model.backend.layer12.parameters(),lr=config['lr']*0.01),
             # dict(params=model.backend.layer11.parameters(),lr=config['lr']*0.01),
@@ -90,7 +94,7 @@ config={
     'l2_reg':tune.grid_search([0.001,0.01,0]),
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)
-    "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"ConvolutionalClassificationHead"},
+    "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"sincNET_Test"},
     "checkpoints": core.params.project_dir[socket.gethostname()] + "/checkpoints"
     }
             
@@ -109,7 +113,7 @@ chosen_config={
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)
     "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"ChosenConfigTest"},
-
+    "checkpoints": core.params.project_dir[socket.gethostname()] + "/checkpoints"
     }
 # ray.init(address="132.68.58.49:6123")
 
@@ -122,12 +126,15 @@ chosen_config={
 #     'configuration':'base',
 #     'filter_letter':'a',
 #     'filter_pitch':["n","lhl"],
-#     'filter_gender':tune.grid_search(["male","female"]),
+#     'filter_gender':"male",
 #     'l2_reg':0.001,
 #     # 'mlp_layers':[512]
 #     # 'activation':nn.LeakyReLU(negative_slope=0.01)
-#     "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"SimpleRunNoGridSearch"}
+#     "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"SimpleRunNoGridSearch"},
+#     "checkpoints": core.params.project_dir[socket.gethostname()] + "/checkpoints"
 # }
+
+# train_model(simple_run_config)
 
 analysis = tune.run(train_model,config=config,resources_per_trial={'gpu':1},verbose=False,name="ConvolutionalClassificationHead",
 callbacks=[WandbLoggerCallback(
