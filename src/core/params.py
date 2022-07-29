@@ -18,7 +18,7 @@ dataset_locations = {
 }
 
 project_dir = {
-    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/VoiceDisorerIdentification"
+    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/VoiceDisorderIdentification"
 }
 
 PathologiesToIndex = {
