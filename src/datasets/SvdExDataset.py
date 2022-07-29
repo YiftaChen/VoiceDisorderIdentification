@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 import os
 from random import sample
-from cv2 import transform
+# from cv2 import transform
 import torch
 from torch.utils.data import Dataset
 from scipy.io import wavfile

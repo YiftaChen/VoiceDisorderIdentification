@@ -20,7 +20,7 @@ import core
 
 
 def test_model(model_id):
-    model_folder = f"/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification/checkpoints/{model_id}"
+    model_folder = core.params.project_dir[socket.gethostname()] + f"/checkpoints/{model_id}"
     checkpoint = torch.load(f"{model_folder}/accuracy_based_model.pt")
     model = HubertClassifier([])
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -35,12 +35,11 @@ def test_model(model_id):
             'test_batch_size':128,
             'num_workers':2,
             'epochs':200,
-            'checkpoints':"/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification/checkpoints",
+            'checkpoints': core.params.project_dir[socket.gethostname()] + "/checkpoints/",
             'name': model_id
 
     }
-
-    # }    # dataset = SvdExtendedVoiceDataset(r"/home/yiftach.ede@staff.technion.ac.il/Desktop/SVD",hp = config,classification_binary=True)
+    
     loss = nn.BCEWithLogitsLoss()
     trainer = svd_trainer.Trainer(datasets=datasets,model=model,optimizers=opt,critereon=loss,hyper_params=hyper_params,verbose=False)
     trainer.test(model)

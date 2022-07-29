@@ -91,7 +91,7 @@ config={
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)
     "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"ConvolutionalClassificationHead"},
-    "checkpoints":r"/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification/checkpoints"
+    "checkpoints": core.params.project_dir[socket.gethostname()] + "/checkpoints"
     }
             
 
@@ -113,11 +113,27 @@ chosen_config={
     }
 # ray.init(address="132.68.58.49:6123")
 
+# simple_run_config={
+#     'lr':1e-3,
+#     'backend_encoder_lr':1e-5,
+
+#     'mlp_layers':[],    
+#     'augmentations':[],
+#     'configuration':'base',
+#     'filter_letter':'a',
+#     'filter_pitch':["n","lhl"],
+#     'filter_gender':tune.grid_search(["male","female"]),
+#     'l2_reg':0.001,
+#     # 'mlp_layers':[512]
+#     # 'activation':nn.LeakyReLU(negative_slope=0.01)
+#     "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"SimpleRunNoGridSearch"}
+# }
+
 analysis = tune.run(train_model,config=config,resources_per_trial={'gpu':1},verbose=False,name="ConvolutionalClassificationHead",
 callbacks=[WandbLoggerCallback(
         project="VoiceDisorder",
         api_key="19e347e092a58ca11a380ad43bd1fd5103f4d14a",
-        log_config=True)]),
+        log_config=True)])
         
 
 

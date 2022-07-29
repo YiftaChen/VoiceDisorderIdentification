@@ -7,10 +7,20 @@ yamnet params are retrieved from:
 '''
 import json
 
+# dataset_locations = {
+#     "sipl-gpu40-u.staff.technion.ac.il":"/home/yiftach.ede@staff.technion.ac.il/data/SVD",
+#     "sipl-gpu2-u.staff.technion.ac.il":"/home/yiftach.ede/data/SVD"
+# }
+
 dataset_locations = {
     "sipl-gpu40-u.staff.technion.ac.il":"/home/yiftach.ede@staff.technion.ac.il/data/SVD",
-    "sipl-gpu2-u.staff.technion.ac.il":"/home/yiftach.ede/data/SVD"
+    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/SVD"
 }
+
+project_dir = {
+    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/VoiceDisorerIdentification"
+}
+
 PathologiesToIndex = {
     "Healthy": 0,
     "Cancer": 1,

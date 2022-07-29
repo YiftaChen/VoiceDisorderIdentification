@@ -1,16 +1,17 @@
 name: VoiceDisorder
 channels:
+  - conda-forge
   - defaults
 dependencies:
-  - torchaudio
-  - torchvision
-  - cudatoolkit=11.3
-  - pytorch
-  - jupyterlab
-  - numpy
-  - pyaml
-  - tqdm
-  - ffmpeg
+  - cudatoolkit=11.6
   - pysoundfile
+  - pytorch
   - matplotlib
+  - jupyterlab
+  - pyaml
+  - torchvision
+  - ffmpeg
+  - numpy
+  - tqdm
+  - torchaudio
 prefix: /home/yiftach.ede@staff.technion.ac.il/anaconda3/envs/VoiceDisorder
