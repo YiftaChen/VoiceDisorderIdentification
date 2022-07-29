@@ -9,6 +9,7 @@ import torch.nn as nn
 from architecture.backend.yamnet.model import Identity
 from transformations import PadWhiteNoise,ToTensor,Truncate,ToOneHot,WaveformToInput,Inflate,Deflate,CFloat
 import librosa
+import random, sys
 from core.params import CommonParams as cfg,PathologiesToIndex
 # from torch_audiomentations import Compose, PitchShift,TimeInversion,AddBackgroundNoise
 from  torchaudio.transforms import Spectrogram,TimeStretch, TimeMasking, FrequencyMasking, InverseSpectrogram,GriffinLim
@@ -33,7 +34,7 @@ def create_transformations(augmentations):
 
 default_label_transforms = nn.Sequential(ToOneHot())
 
-def create_datasets(root_dir,split:tuple,hp,filter_gender=None,**kwargs)->list():
+def create_datasets(root_dir,split:tuple,hp,filter_gender=None,seed=None,**kwargs)->list():
     assert sum(split)==1, f"Splits fraction array should sum up to 1"
     split = np.cumsum(split)
     files_array = []
@@ -42,11 +43,18 @@ def create_datasets(root_dir,split:tuple,hp,filter_gender=None,**kwargs)->list()
     for root, dirs, files in os.walk(root_dir):
         files_array += [os.path. join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
 
-    import random
-    random.shuffle(files)
+    if seed == None:    
+        seed = random.randrange(sys.maxsize)
+    random.Random(seed).shuffle(files_array)
+
     split = [int(s * len(files_array))for s in split][:-1]
+
     files_split = np.split(files_array, split)
-    return [SvdExtendedVoiceDataset(sp,hp,**kwargs) for sp in files_split]
+
+    hp['seed']=seed
+    splits = [SvdExtendedVoiceDataset(sp,hp,**kwargs) for sp in files_split]
+
+    return splits
 
 # TODO: make this inherit AudioFolderDataset
 class SvdExtendedVoiceDataset(Dataset):
@@ -60,6 +68,7 @@ class SvdExtendedVoiceDataset(Dataset):
         self.label_transform = label_transform
         self.classification_binary = classification_binary
         self.class_definitions=class_definitions if class_definitions!= None else PathologiesToIndex# Placeholder for actual definitions
+        self.seed = hp['seed']
         self.files = files
             # assert len(files) == 0 or (len(files) != 0 and 
         assert len(self.files) > 0,f"Directory should not be empty, it is {self.files}"

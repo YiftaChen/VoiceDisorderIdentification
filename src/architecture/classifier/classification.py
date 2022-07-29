@@ -133,7 +133,7 @@ class Wav2Vec2Classifier(nn.Module):
         return self.classifier(x).squeeze()
 
 class HubertClassifier(nn.Module):
-    def __init__(self,dimensions=[],configuration="base",out_dim=1,activation=nn.ReLU(),freeze_backend_grad=True) -> None:
+    def __init__(self,dimensions=[],configuration="base",out_dim=1,activation=SinusoidalActivation(),freeze_backend_grad=True) -> None:
         super().__init__()
         layers = []
         if configuration == "base":
@@ -155,7 +155,7 @@ class HubertClassifier(nn.Module):
         #     input_dim = dimension
         input_dim = input_dim*49
       
-        self.classifier=FullyConnectedClassificationHead(input_dim,out_dim)
+        self.classifier=ConvolutionalClassificationHead(1,out_dim,activation=activation)
         # self.backend = s3prl.hub.hubert()    
         if freeze_backend_grad:
             for param in self.model.parameters():

@@ -32,7 +32,8 @@ from itertools import chain, combinations
 count = 0
 @wandb_mixin
 def train_model(config):
-    wandb.run.name = f"FullyConnectedAblation{wandb.run.name.split('_')[-1]}"
+    run_name =  f"ConvolutionalClassificationHead{wandb.run.name.split('_')[-1]}"
+    wandb.run.name = run_name
     wandb.run.save()
     torch.autograd.set_detect_anomaly(True)
     directory = core.params.dataset_locations[socket.gethostname()]
@@ -61,7 +62,9 @@ def train_model(config):
         'vald_batch_size':200,
         'test_batch_size':200,
         'num_workers':2,
-        'epochs':50
+        'epochs':50,
+        'checkpoints':config['checkpoints'],
+        'name': run_name
     }
     trainer = svd_trainer.Trainer(datasets=datasets,model=model,optimizers=opt,critereon=loss,early_stop=200,hyper_params=hyper_params,verbose=False)
     model = trainer.train()
@@ -73,9 +76,9 @@ def powerset(iterable):
 
 
 config={
-    'lr':tune.grid_search([2.45e-2,2.45e-3]),
-    'backend_encoder_lr':tune.grid_search([2.45e-4,2.45e-5]),
-    'augmentations':None,
+    'lr':tune.grid_search([1e-2,1e-3,2.45e-2,2.45e-3]),
+    'backend_encoder_lr':tune.grid_search([1e-4,1e-5]),
+        'augmentations':None,
     'mlp_layers':[],
     # 'delta':tune.grid_search([10]),
     'configuration':tune.grid_search(["base","large"]),
@@ -87,8 +90,8 @@ config={
     'l2_reg':tune.grid_search([0.001,0.01,0]),
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)
-    "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"FullyConnectedClassifier"},
-
+    "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"ConvolutionalClassificationHead"},
+    "checkpoints":r"/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification/checkpoints"
     }
             
 
@@ -110,7 +113,7 @@ chosen_config={
     }
 # ray.init(address="132.68.58.49:6123")
 
-analysis = tune.run(train_model,config=config,resources_per_trial={'gpu':1},verbose=False,name="WindowedDatasetAblation",
+analysis = tune.run(train_model,config=config,resources_per_trial={'gpu':1},verbose=False,name="ConvolutionalClassificationHead",
 callbacks=[WandbLoggerCallback(
         project="VoiceDisorder",
         api_key="19e347e092a58ca11a380ad43bd1fd5103f4d14a",
