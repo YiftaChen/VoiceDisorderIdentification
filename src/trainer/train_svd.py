@@ -13,13 +13,13 @@ import seaborn as sn
 import pandas as pd
 import matplotlib.pyplot as plt
 class Trainer(object):
-    def __init__(self,datasets,model,optimizers,critereon,hyper_params,early_stop=float('inf'),device=None,verbose=False) -> None:
+    def __init__(self,datasets,model,optimizers,critereon,hyper_params,early_stop=float('inf'),device=None,verbose=False,save_checkpoint=False) -> None:
         # self.dl = dataloader
         # torch.multiprocessing.set_start_method('spawn')
         self.train_set, self.val_set, self.test_set = datasets
         self.seed = self.train_set.seed
         torch.manual_seed(self.seed)
-
+        self.save_checkpoint = save_checkpoint
         self.writer = SummaryWriter("logs/")
         self.train_set =  DataLoader(
             self.train_set,
@@ -70,6 +70,7 @@ class Trainer(object):
 
         with tqdm(range(self.hp['epochs'])) as pbar_epochs:
             for idx,epoch in enumerate(pbar_epochs):
+                self.model.train()
                 running_loss = 0.0
                 epoch_accuracy = 0.0
                 epoch_accuracies = []
@@ -128,6 +129,8 @@ class Trainer(object):
                 vald_gt = []
 
                 vald_loss = 0.0
+                self.model.eval()
+
                 with tqdm(self.val_set,disable=self.disableTQDM) as t:
                         for idx,sample in enumerate(t):
                             x = sample['data'].to(device=self.device)
@@ -173,16 +176,17 @@ class Trainer(object):
                         wandb.log({"best_epoch_validation_confusion_matrix" : wandb.plot.confusion_matrix(
                             y_true=vald_gt, preds=vald_preds > 0,
                             class_names=["Sick","Healthy"])})
-                        torch.save({
-                            'epoch': epoch,
-                                'model_state_dict': self.model.state_dict(),
-                                'optimizer_state_dict': self.optimizers.state_dict(),
-                                'loss': loss,
-                                'accuracy':accuracy,
-                                'f1':f1,
-                                'seed':self.seed
-                                }, f"{self.hp['checkpoints']}/{self.hp['name']}/accuracy_based_model.pt")
-                        
+                        if self.save_checkpoint:
+                            torch.save({
+                                'epoch': epoch,
+                                    'model_state_dict': self.model.state_dict(),
+                                    'optimizer_state_dict': self.optimizers.state_dict(),
+                                    'loss': loss,
+                                    'accuracy':accuracy,
+                                    'f1':f1,
+                                    'seed':self.seed
+                                    }, f"{self.hp['checkpoints']}/{self.hp['name']}/accuracy_based_model.pt")
+                            
                 if (max_validation_f1 < f1):
                     wandb.log({"best_epoch_train_confusion_matrix" : wandb.plot.confusion_matrix(
                         y_true=train_gt, preds=train_preds > 0,
@@ -190,15 +194,16 @@ class Trainer(object):
                     wandb.log({"best_epoch_validation_confusion_matrix" : wandb.plot.confusion_matrix(
                         y_true=vald_gt, preds=vald_preds > 0,
                         class_names=["Healthy","Sick"])})
-                    torch.save({
-                        'epoch': epoch,
-                            'model_state_dict': self.model.state_dict(),
-                            'optimizer_staגte_dict': self.optimizers.state_dict(),
-                            'loss': loss,
-                            'accuracy':accuracy,
-                            'f1':f1,
-                            'seed':self.seed
-                            }, f"{self.hp['checkpoints']}/{self.hp['name']}/f1_based_model.pt")
+                    if self.save_checkpoint:
+                        torch.save({
+                            'epoch': epoch,
+                                'model_state_dict': self.model.state_dict(),
+                                'optimizer_staגte_dict': self.optimizers.state_dict(),
+                                'loss': loss,
+                                'accuracy':accuracy,
+                                'f1':f1,
+                                'seed':self.seed
+                                }, f"{self.hp['checkpoints']}/{self.hp['name']}/f1_based_model.pt")
 
                 max_validation_f1 = max(max_validation_f1,f1)
                 max_validation_acc = max(max_validation_acc,accuracy)
@@ -228,6 +233,7 @@ class Trainer(object):
         test_recalls = []
         test_f1 = []
         dict_pathologies = {}
+        model.eval()
         with tqdm(self.test_set) as t:
             for idx,sample in enumerate(t):
                 x = sample['data'].to(device=self.device)
