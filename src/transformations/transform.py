@@ -9,8 +9,12 @@ from core.params import CommonParams, YAMNetParams
 class ToOneHot(nn.Module):
     def __call__(self, classification):
         if not isinstance(classification,bool):
+            orig_class = classification
             classification = torch.Tensor([classification]).to(torch.int64)
-            classification = F.one_hot(classification,10).squeeze()
+            classification = F.one_hot(classification,11).squeeze()
+            if len(orig_class)>1:
+                classification = sum(classification)
+
         return classification
 class CFloat(nn.Module):
     def __call__(self,data):

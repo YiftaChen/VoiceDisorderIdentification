@@ -41,7 +41,25 @@ def create_datasets(root_dir,split:tuple,hp,filter_gender=None,seed=None,**kwarg
     if hp["filter_gender"] != None:
         root_dir=os.path.join(root_dir,hp["filter_gender"])
     for root, dirs, files in os.walk(root_dir):
-        files_array += [os.path. join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
+
+        if kwargs['classification_binary']!=True:
+            files_array += [os.path. join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav') and 'healthy' not in f.lower()]
+        else:
+            files_array += [os.path. join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
+    if kwargs['classification_binary']!=True:
+        data = {}
+        subjects = [(path,path.split('/')[-3],path.split('/')[-1].split('-')[0]) for path in files_array]
+        for path,pathology,subject in subjects:
+            if pathology == "Healthy":
+                continue
+            if subject not in data:
+                data[subject]={}
+            if pathology not in data[subject].keys():
+                data[subject][pathology]=[path]
+            else:
+                data[subject][pathology]+=[path]
+        files_array = [(list(sublist[1].items())[0][1],list(sublist[1].keys())) for sublist in data.items() for entry in sublist]
+        files_array =  [(item,tup[1]) for tup in files_array for item in tup[0]]
 
     if seed == None:    
         seed = random.randrange(sys.maxsize)
@@ -84,16 +102,24 @@ class SvdExtendedVoiceDataset(Dataset):
             index = index.item()
         if isinstance(index,list):
             index = index[0]
-        samplerate, data = self._load_wav(self.files[index])
-        classification_index,classification = self._get_class(self.files[index])
-        
+        # assert False, self.files[index]
+        if self.classification_binary:
+            samplerate, data = self._load_wav(self.files[index])
+            classification_index,classification = self._get_class(self.files[index])
+        else:
+            samplerate, data = self._load_wav(self.files[index][0])
+            classification = self.files[index][1]
+            # assert False,f"classification {classification}"
+            if "Healthy" in classification:
+                assert False, f"fuck, classification {classification}"
+            classification_index = [self.class_definitions[index] for index in self.files[index][1]]
         if self.data_transform != None:
             data = self.data_transform(data)
         if self.label_transform != None and not self.classification_binary:
-            label = self.label_transform(classification)
+            label = self.label_transform(classification_index)
         if self.classification_binary:
             label = classification_index!=0
-        return {'data':data, 'sampling_rate':samplerate,'classification':label,'original_class':classification}
+        return {'data':data, 'sampling_rate':samplerate,'classification':label}
 
 class SvdCutOffShort(SvdExtendedVoiceDataset):
     """Saarbruken blah blah, cut off samples smaller than 0.96"""
@@ -140,7 +166,7 @@ class SvdWindowedDataset(SvdExtendedVoiceDataset):
         return self.class_definitions[wav_file_path.split('/')[-3]], wav_file_path.split('/')[-3]
 
     def _inflate_sound_files(self,files):
-        def get_window_count(f):
+        def get_window_unt(f):
             length = librosa.get_duration(filename=f)*cfg.SVD_SAMPLE_RATE
             length = 0 if length-cfg.SVD_SAMPLE_RATE<0 else length-cfg.SVD_SAMPLE_RATE
             return int(length/(self.delta*cfg.SVD_SAMPLE_RATE))+1
@@ -155,5 +181,14 @@ if __name__ == "__main__":
     hp["filter_pitch"] = None
     hp["filter_letter"] = None
     hp["filter_gender"] = None
-    sets = create_datasets(r"/home/yiftach.ede@staff.technion.ac.il/data/SVD",split=(0.8,0.1,0.1),hp=hp,filter_gender=None)
-    print(sets[0])
+    sets = create_datasets(r"/home/yiftach.ede/data/SVD",split=(0.8,0.1,0.1),hp=hp,filter_gender=None,classification_binary=False)
+    loader =  DataLoader(
+            sets[0],
+            batch_size=20,
+            shuffle=True,
+            num_workers=1
+        )    
+    for item in loader:
+        print(item)
+        pass
+    # print(sets[0][0])

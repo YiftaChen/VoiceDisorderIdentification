@@ -79,7 +79,7 @@ class FullyConnectedClassificationHead(nn.Module):
         return self.layers(x)
 
 class ConvolutionalClassificationHead(nn.Module):
-    def __init__(self,input_dim,out_dim,activation=nn.ReLU(), kernels=[(3,5)]*4,strides=[(1,2)]*4,inner_dim = [1,1,1,1],initial_image_dim=(49,768)):
+    def __init__(self,input_dim,out_dim,activation=nn.ReLU(), kernels=[(3,5)]*3,strides=(1,2),inner_dim = 16,initial_image_dim=(49,768)):
         super().__init__()
         layers = [] 
         inp = input_dim
@@ -191,7 +191,7 @@ class HubertClassifier(nn.Module):
         #                 # nn.BatchNorm1d(num_features=dimension),
         #                 activation]
         #     input_dim = dimension
-        input_dim = input_dim*49
+        self.input_dim = input_dim*49
         self.classifier = LSTMClassificationHead(1,bidirectional=hp["bidirectional"],
                                                 layer_count=hp["lstm_layer_count"],
                                                 hidden_dim=hp["hidden_dim"],
@@ -221,3 +221,24 @@ class HubertClassifier(nn.Module):
         # x = x.reshape(x.shape[0],-1)
         x =  self.classifier(x)
         return x.squeeze()
+
+class HubertMulticlassClassifier(HubertClassifier):
+    def __init__(self,hp,configuration="base",out_dim=1,activation=SinusoidalActivation(),freeze_backend_grad=True,num_classes = 11) -> None:
+        super().__init__(hp,configuration,out_dim,activation,freeze_backend_grad)
+        classifiers = []
+        for class_id in range(num_classes):
+          classifiers+=[ConvolutionalClassificationHead(1,out_dim=1)]
+        self.classifier = nn.ModuleList(classifiers)
+
+
+    def forward(self,x):
+        x = x.reshape((x.shape[0],x.shape[-1]))
+        x = torchaudio.functional.resample(x, 50000, self.bundle.sample_rate)        
+        x,y = self.model(x)
+        # assert False, f"x shape {x.shape}"
+        # x = self.classifier(x)
+        # x = x.reshape(x.shape[0],-1)
+        classifications = [classifier(x) for classifier in self.classifier]
+        
+        classifications = torch.cat(classifications,axis=1)
+        return classifications

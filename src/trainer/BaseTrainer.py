@@ -14,9 +14,9 @@ class BatchResult(NamedTuple):
 
 
 class BaseTrainer(object):
-    def __init__(self,dataset,model,optimizer,hyper_params,early_stop=float('inf'),device=None,verbose=False,logResults=True) -> None:
+    def __init__(self,datasets,model,optimizer,hyper_params,early_stop=float('inf'),device=None,verbose=False,logResults=True) -> None:
         # self.dl = dataloader
-        self.train_set, self.val_set, self.test_set = self.train_val_test_split(dataset)        
+        self.train_set, self.val_set, self.test_set = datasets        
         self.train_set =  DataLoader(
             self.train_set,
             batch_size=hyper_params['train_batch_size'],
@@ -35,7 +35,6 @@ class BaseTrainer(object):
             shuffle=True,
             num_workers=hyper_params['num_workers']
         )
-       
         self.early_stop = early_stop
         self.disableTQDM = not verbose
         self.model = model

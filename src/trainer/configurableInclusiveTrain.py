@@ -10,7 +10,7 @@ from architecture.backend.yamnet.model import yamnet_category_metadata
 
 from architecture.classifier.classification import YamnetClassifier,Wav2Vec2Classifier,HubertMulticlassClassifier,HubertClassifier
 from datasets.SvdExDataset import create_datasets
-import trainer.train_svd as svd_trainer
+import trainer.InclusiveMulticlassTrainer as svd_trainer
 import torch.nn as nn
 import torch.optim 
 from ray import tune
@@ -32,18 +32,16 @@ from itertools import chain, combinations
 count = 0
 @wandb_mixin
 def train_model(config):
-    run_name =  f"LSTMClassificationMultiLayerHead{wandb.run.name.split('_')[-1]}"
+    run_name =  f"ConvMulticlassClassificationHead{wandb.run.name.split('_')[-1]}"
     wandb.run.name = run_name
     wandb.run.save()
     torch.autograd.set_detect_anomaly(True)
     directory = core.params.dataset_locations[socket.gethostname()]
-
+    
     datasets = create_datasets(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=config['filter_gender'],classification_binary=config['binary_classification'])
-    assert False, f"datasets: {datasets[0][0]}"
-    # torch.multiprocessing.set_start_method('spawn')
 
     model = HubertMulticlassClassifier(config).to(device="cuda:0")  
-    print(model)
+    # print(model)
     loss = nn.BCEWithLogitsLoss()
     # params_non_frozen = filter(lambda p: p.requires_grad, model.parameters())
     # assert False, f"model params {model}"
@@ -66,7 +64,7 @@ def train_model(config):
         'checkpoints':config['checkpoints'],
         'name': run_name,
     }
-    trainer = svd_trainer.Trainer(datasets=datasets,model=model,optimizers=opt,critereon=loss,early_stop=200,hyper_params=hyper_params,verbose=False)
+    trainer = svd_trainer.MulticlassTrainer(datasets=datasets,model=model,optimizer=opt,early_stop=200,hyper_params=hyper_params,verbose=False)
     model = trainer.train()
     
 def powerset(iterable):
@@ -95,7 +93,7 @@ config={
     'filter_gender':tune.grid_search([None]),
     'l2_reg':tune.grid_search([0.001,0.01,0]),
 
-    "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"LSTMClassificationMultiLayerHead"},
+    "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"ConvMulticlassClassificationHead"},
     "checkpoints":r"/home/yiftach.ede/VoiceDisorderIdentification/checkpoints"
     }
             
