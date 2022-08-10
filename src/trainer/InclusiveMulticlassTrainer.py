@@ -20,10 +20,9 @@ class MulticlassTrainer(BaseTrainer):
         predictions = outputs.detach()>0
 
         len_predictions = prod(y.shape)
-        # assert False, f"len pred {len_predictions}"
         accuracy = torch.sum(predictions==y)/len_predictions      
-
-        return BatchResult(loss,accuracy)
+        per_class_accuracy = torch.sum(predictions==y,axis=0)/y.shape[0]
+        return BatchResult(predictions,loss,accuracy,per_class_accuracy)
 
     def validate_batch(self, sample) -> BatchResult:
         x = sample['data'].to(device=self.device)
@@ -35,5 +34,5 @@ class MulticlassTrainer(BaseTrainer):
             predictions = outputs.detach()>0
             len_predictions = prod(y.shape)
             accuracy = torch.sum(predictions==y)/len_predictions             
-         
-        return BatchResult(loss,accuracy)
+            per_class_accuracy = torch.sum(predictions==y,axis=0)
+        return BatchResult(predictions,loss,accuracy,per_class_accuracy)

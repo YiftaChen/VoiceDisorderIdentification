@@ -6,12 +6,16 @@ import math
 from typing import NamedTuple
 import numpy as np
 from ray import tune
-
-
-class BatchResult(NamedTuple):    
+import core.params
+from sklearn.metrics import multilabel_confusion_matrix
+import seaborn as sn
+import pandas as pd
+import matplotlib.pyplot as plt
+class BatchResult(NamedTuple):   
+    predictions: torch.BoolTensor 
     loss: float
     accuracy: float
-
+    per_class_accuracy: torch.FloatTensor
 
 class BaseTrainer(object):
     def __init__(self,datasets,model,optimizer,hyper_params,early_stop=float('inf'),device=None,verbose=False,logResults=True) -> None:
@@ -69,53 +73,72 @@ class BaseTrainer(object):
         last_acc=0
         runs_without_improv=0
 
-        with tqdm(range(self.hp['epochs'])) as pbar_epochs:
+        with tqdm(range(self.hp['epochs']),ncols=300) as pbar_epochs:
             for idx,epoch in enumerate(pbar_epochs):
                 running_loss = 0.0
                 epoch_accuracy = 0.0
                 epoch_accuracies = []               
                 epoch_losses = []
+                epoch_class_accuracies = []
+                sample_count = 0
                 with tqdm(self.train_set,disable=self.disableTQDM) as pbar:
                     for idx,sample in enumerate(pbar): 
                         batchRes = self.train_batch(sample)
-
+                        sample_count += sample['data'].shape[0]
                         accuracy = batchRes.accuracy
                         loss = batchRes.loss
-
+                        class_accuracies = batchRes.per_class_accuracy
                         running_loss+=loss
-
                         train_accuracies += [accuracy]                       
                         epoch_losses += [loss]
                         epoch_accuracies += [accuracy]                        
-
-                        pbar.set_description(f"train epoch {epoch}, train loss is {loss.item()}, Accuracy {accuracy*100}%")
+                        epoch_class_accuracies += [class_accuracies]
+                        pbar.set_description(f"train epoch {epoch}, train loss is {loss.item()}, Accuracy {accuracy*100}% ")
                         if idx == len(self.train_set)-1 :
                             epoch_accuracy = sum(epoch_accuracies)/len(epoch_accuracies)                           
                             epoch_loss = sum(epoch_losses)/len(epoch_losses)
-                            pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%")
+                            epoch_class_accuracies = sum(epoch_class_accuracies)/sample_count
+                            pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}% Class Accuracies {epoch_class_accuracies*100}")
                     
 
                 train_losses += [running_loss]
                 vald_accuracies = []   
-                vald_losses = []        
-
+                vald_losses = []    
+                vald_class_accuracies = []    
+                vald_predictions = []
+                vald_true = []
+                vald_sample_count = 0
                 vald_loss = 0.0
                 with tqdm(self.val_set,disable=self.disableTQDM) as t:
                         for idx,sample in enumerate(t):                            
                             batchRes = self.validate_batch(sample)
-
+                            vald_sample_count += sample['data'].shape[0]
                             accuracy = batchRes.accuracy.cpu()
                             loss = batchRes.loss.cpu()
+                            class_accuracies = batchRes.per_class_accuracy
+                            vald_predictions.extend(batchRes.predictions.cpu().numpy())
+                            vald_true.extend(sample['classification'].cpu().numpy())
                             vald_loss+=loss
 
                             vald_accuracies += [accuracy]                            
                             vald_losses += [loss]
-                         
-                            t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%")            
+                            vald_class_accuracies += [class_accuracies]
+                            t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, class accuracies {class_accuracies/sample_count}")            
+                if epoch%5==0:
+                    classes = list(core.params.PathologiesToIndex.keys())
+                    cf_matrix = multilabel_confusion_matrix(vald_true, vald_predictions)
+                    # assert False, f"shape of cf_matrix {cf_matrix.shape}"
+                    for c in range(cf_matrix.shape[0]):
+                        df_cm = pd.DataFrame(cf_matrix[c,:,:]/np.sum(cf_matrix[c,:,:]) *10, index = ["True","False"],
+                                            columns = ["True","False"])
+                        plt.figure(figsize = (12,7))
+                        sn.heatmap(df_cm, annot=True)
+                        plt.savefig(f'/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
+
 
                 accuracy = np.array(vald_accuracies).mean()               
                 loss = np.array(vald_losses).mean()
-
+                vald_class_acc = sum(vald_class_accuracies) / vald_sample_count
                 if (self.logResults):
                     tune.report(valid_acc=accuracy,train_acc=epoch_accuracy.item())                                            
                     tune.report(valid_loss=loss,train_loss=epoch_loss.item())                        
@@ -125,8 +148,9 @@ class BaseTrainer(object):
                     runs_without_improv=0
                 else:
                     runs_without_improv+=1
+                # pbar_epochs.set_description(f"validation epoch {epoch} validation class accuracies {vald_class_acc}")            
 
-                pbar_epochs.set_description(f"validation epoch {epoch}, train acc {'{:.2f}'.format(epoch_accuracy.item())}, validation acc {'{:.2f}'.format(accuracy.item())}")            
+                pbar_epochs.set_description(f"validation epoch {epoch}, train acc {'{:.2f}'.format(epoch_accuracy.item())}, validation acc {'{:.2f}'.format(accuracy.item())} validation class accuracies {vald_class_acc}")            
 
                 if (runs_without_improv>=self.early_stop):
                     vald_losses += [vald_loss]

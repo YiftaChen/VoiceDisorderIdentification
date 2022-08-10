@@ -227,7 +227,7 @@ class HubertMulticlassClassifier(HubertClassifier):
         super().__init__(hp,configuration,out_dim,activation,freeze_backend_grad)
         classifiers = []
         for class_id in range(num_classes):
-          classifiers+=[ConvolutionalClassificationHead(1,out_dim=1)]
+          classifiers+=[FullyConnectedClassificationHead(self.input_dim,out_dim=1)]
         self.classifier = nn.ModuleList(classifiers)
 
 

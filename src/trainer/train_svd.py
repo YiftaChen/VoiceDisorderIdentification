@@ -285,7 +285,7 @@ class Trainer(object):
         df_cm = pd.DataFrame(data,keys,['Correct','Incorrect'])
         sn.set(font_scale=0.8) # for label size
         sn.set(rc={'figure.figsize':(15,15)})
-
+        
         sn.heatmap(df_cm, annot=True,fmt='d' ,annot_kws={"size": 16}) # font size
 
         plt.savefig('confusion_matrix.png')

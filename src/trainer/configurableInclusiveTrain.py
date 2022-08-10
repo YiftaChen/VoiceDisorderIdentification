@@ -86,12 +86,12 @@ config={
     # 'classification_inner_dim':tune.grid_search([1,64]),
     # 'classification_head_strides':tune.grid_search([(1,2)]),
     # 'classification_head_kernels':tune.grid_search([[(7,7)]*5,[(7,7)]*3,[(7,7)]*4,[(5,5)]*5,[(5,5)]*4,[(5,5)]*3,[(3,3)]*5,[(3,3)]*4,[(3,3)]*3]),
-    'lstm_layer_count':tune.grid_search([3,2,4]),
-    'hidden_dim':tune.grid_search([100,400,1000]),
-    'bidirectional':tune.grid_search([True,False]),
-    'dropout':tune.grid_search([0.5,0]),
+    'lstm_layer_count':tune.grid_search([1]),
+    'hidden_dim':tune.grid_search([1]),
+    'bidirectional':tune.grid_search([False]),
+    'dropout':tune.grid_search([0]),
     'filter_gender':tune.grid_search([None]),
-    'l2_reg':tune.grid_search([0.001,0.01,0]),
+    'l2_reg':tune.grid_search([0]),
 
     "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"ConvMulticlassClassificationHead"},
     "checkpoints":r"/home/yiftach.ede/VoiceDisorderIdentification/checkpoints"
