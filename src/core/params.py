@@ -6,11 +6,27 @@ yamnet params are retrieved from:
     https://github.com/tensorflow/models/blob/bd488858d610e44df69da6f89277e9de8a03722c/research/audioset/yamnet/params.py
 '''
 import json
+import socket
+
+# dataset_locations = {
+#     "sipl-gpu40-u.staff.technion.ac.il":"/home/yiftach.ede@staff.technion.ac.il/data/SVD",
+#     "sipl-gpu2-u.staff.technion.ac.il":"/home/yiftach.ede/data/SVD"
+# }
 
 dataset_locations = {
     "sipl-gpu40-u.staff.technion.ac.il":"/home/yiftach.ede@staff.technion.ac.il/data/SVD",
-    "sipl-gpu2-u.staff.technion.ac.il":"/home/yiftach.ede/data/SVD"
+    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/SVD"
 }
+
+project_dirs = {
+    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/VoiceDisorderIdentification"
+}
+
+project_dir = project_dirs[socket.gethostname()]
+checkpoints_dir = project_dir + "/checkpoints"
+dataset_location = dataset_locations[socket.gethostname()]
+
+
 PathologiesToIndex = {
     "Healthy": 0,
     "Cancer": 1,

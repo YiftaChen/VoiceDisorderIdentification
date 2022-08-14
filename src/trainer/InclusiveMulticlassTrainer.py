@@ -1,7 +1,7 @@
 from trainer.BaseTrainer import BaseTrainer,BatchResult
 import torch
 import torch.nn as nn
-from math import prod
+# from math import prod
 
 class MulticlassTrainer(BaseTrainer):
     def __init__(self, datasets, model, optimizer, hyper_params, early_stop=float('inf'), device=None, verbose=False, logResults=True) -> None:
@@ -19,7 +19,7 @@ class MulticlassTrainer(BaseTrainer):
         
         predictions = outputs.detach()>0
 
-        len_predictions = prod(y.shape)
+        len_predictions = torch.numel(y)
         accuracy = torch.sum(predictions==y)/len_predictions      
         per_class_accuracy = torch.sum(predictions==y,axis=0)/y.shape[0]
         return BatchResult(predictions,loss,accuracy,per_class_accuracy)
@@ -32,7 +32,7 @@ class MulticlassTrainer(BaseTrainer):
             outputs = self.model(x)
             loss = self.criterion(outputs,y)            
             predictions = outputs.detach()>0
-            len_predictions = prod(y.shape)
+            len_predictions = torch.numel(y)
             accuracy = torch.sum(predictions==y)/len_predictions             
             per_class_accuracy = torch.sum(predictions==y,axis=0)
         return BatchResult(predictions,loss,accuracy,per_class_accuracy)

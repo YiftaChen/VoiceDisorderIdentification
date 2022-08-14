@@ -36,7 +36,7 @@ def train_model(config):
     wandb.run.name = run_name
     wandb.run.save()
     torch.autograd.set_detect_anomaly(True)
-    directory = core.params.dataset_locations[socket.gethostname()]
+    directory = core.params.dataset_location
     
     datasets = create_datasets_split_by_subjects(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=config['filter_gender'],classification_binary=config['binary_classification'])
 
@@ -94,7 +94,7 @@ config={
     'l2_reg':tune.grid_search([0]),
 
     "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"ConvMulticlassClassificationHead"},
-    "checkpoints":r"/home/yiftach.ede/VoiceDisorderIdentification/checkpoints"
+    "checkpoints": core.params.checkpoints_dir
     }
             
 

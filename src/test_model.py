@@ -20,12 +20,12 @@ import core
 
 
 def test_model(model_id):
-    model_folder = f"/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification/checkpoints/{model_id}"
+    model_folder = core.params.checkpoints_dir + f"/{model_id}"
     checkpoint = torch.load(f"{model_folder}/accuracy_based_model.pt")
     model = HubertClassifier([])
     model.load_state_dict(checkpoint['model_state_dict'])
     model = model.to(device="cuda:0")
-    directory = core.params.dataset_locations[socket.gethostname()]
+    directory = core.params.dataset_location
     config = {'filter_gender':None, 'lr':0}
     datasets = create_datasets(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=config['filter_gender'],seed=checkpoint['seed'])
     opt = torch.optim.Adam(params=model.parameters(),lr=config["lr"])
@@ -35,7 +35,7 @@ def test_model(model_id):
             'test_batch_size':128,
             'num_workers':2,
             'epochs':200,
-            'checkpoints':"/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification/checkpoints",
+            'checkpoints': core.params.checkpoints_dir + "/",
             'name': model_id
 
     }

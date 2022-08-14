@@ -6,6 +6,7 @@ import math
 from typing import NamedTuple
 import numpy as np
 from ray import tune
+import os
 import core.params
 from sklearn.metrics import multilabel_confusion_matrix
 import seaborn as sn
@@ -133,7 +134,8 @@ class BaseTrainer(object):
                                             columns = ["Not Sick GT","Sick GT"])
                         plt.figure(figsize = (12,7))
                         sn.heatmap(df_cm, annot=True,fmt='g')
-                        plt.savefig(f'/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
+                        os.makedirs(core.params.project_dir + f'/src/confusion_matrices',exist_ok=True)
+                        plt.savefig(core.params.project_dir + f'/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
 
 
                 accuracy = np.array(vald_accuracies).mean()               
