@@ -34,7 +34,7 @@ from itertools import chain, combinations
 count = 0
 @wandb_mixin
 def train_model(config):
-    run_name = "noname" # f"sincNET_Test{wandb.run.name.split('_')[-1]}"
+    run_name = "noname" #f"sincNET_Test{wandb.run.name.split('_')[-1]}"
     # wandb.run.name = run_name
     # wandb.run.save()
     torch.autograd.set_detect_anomaly(True)
@@ -46,8 +46,10 @@ def train_model(config):
 
     # model = HubertClassifier(config["mlp_layers"]).to(device="cuda:0")  
     # model = SincNETClassifier().to(device="cuda:0")  
-    model =   Basic1DCNN([16,32,64],[512,5,5],[512,1,1],[64,32],1)
-
+    model =   Basic1DCNN([32,32,64],[20001,5,5],[1,2,2],[32,16],1,0.8)
+    print("param count")
+    print(sum(p.numel() for p in model.parameters() if p.requires_grad))
+    print("model architecture")
     print(model)
 
     loss = nn.BCEWithLogitsLoss()
@@ -127,10 +129,10 @@ simple_run_config={
     'mlp_layers':[],    
     'augmentations':[],
     'configuration':'base',
-    'filter_letter':None,
+    'filter_letter':'a',
     'filter_pitch':None,
-    'filter_gender':None,
-    'l2_reg':0.001,
+    'filter_gender':'male',
+    'l2_reg':0.01,
     # 'mlp_layers':[512]
     # 'activation':nn.LeakyReLU(negative_slope=0.01)
     "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"SimpleRunNoGridSearch"},

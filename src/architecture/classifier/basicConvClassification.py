@@ -7,7 +7,7 @@ from torchsummary import summary
 
 
 class Basic1DCNN(nn.Module):
-    def __init__(self,channels,kernelsize,strides,mlpLayers,outputDim,poolEvery=2) -> None:
+    def __init__(self,channels,kernelsize,strides,mlpLayers,outputDim,dropout=0.3,poolEvery=2) -> None:
       super().__init__()
 
       input_dim = 50000
@@ -18,11 +18,12 @@ class Basic1DCNN(nn.Module):
 
       for idx,(channel,kernelSize,stride) in enumerate(zip(channels,kernelsize,strides)):
         if (idx%poolEvery==0 and idx!=0):
-          layers.append(nn.MaxPool1d(8,8))
+          layers.append(nn.MaxPool1d(16,8))
 
         layers.append(nn.Conv1d(prevChannel,channel,kernelSize,stride))
         layers.append(nn.BatchNorm1d(channel))        
-        layers.append(nn.LeakyReLU())        
+        layers.append(nn.LeakyReLU())      
+        layers.append(nn.Dropout1d(dropout))  
         
         prevChannel = channel
 
@@ -41,6 +42,7 @@ class Basic1DCNN(nn.Module):
       layers.append(nn.Linear(prevSize,outputDim))
 
       self.mlp = nn.Sequential(*layers)
+      a=5
 
 
     def getCnnOutputDim(self, input_dim):

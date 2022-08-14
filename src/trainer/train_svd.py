@@ -67,8 +67,10 @@ class Trainer(object):
         runs_without_improv=0
         max_validation_acc = 0        
         max_validation_f1 = 0
+        
 
         with tqdm(range(self.hp['epochs'])) as pbar_epochs:
+            self.model.train()
             for idx,epoch in enumerate(pbar_epochs):
                 running_loss = 0.0
                 epoch_accuracy = 0.0
@@ -118,6 +120,7 @@ class Trainer(object):
                             epoch_f1_score = sum(epoch_f1_scores)/len(epoch_f1_scores)
                             pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean F1 Score {epoch_f1_score}, Mean Accuracy:{epoch_accuracy*100}%, Mean Precision:{epoch_precision*100}%, Mean Recall:{epoch_recall*100}%")
 
+                print(sum(p.pow(2.0).sum() for p in self.model.parameters()))
                 train_losses += [running_loss]
                 vald_accuracies = []
                 vald_precisions = []
@@ -126,6 +129,8 @@ class Trainer(object):
                 vald_f1_scores = []
                 vald_preds = []
                 vald_gt = []
+
+                self.model.eval()
 
                 vald_loss = 0.0
                 with tqdm(self.val_set,disable=self.disableTQDM) as t:
@@ -167,12 +172,12 @@ class Trainer(object):
 
 
                 if (max_validation_acc < accuracy):
-                        wandb.log({"best_epoch_train_confusion_matrix" : wandb.plot.confusion_matrix(
-                            y_true=train_gt, preds=train_preds > 0,
-                            class_names=["Sick","Healthy"])})
-                        wandb.log({"best_epoch_validation_confusion_matrix" : wandb.plot.confusion_matrix(
-                            y_true=vald_gt, preds=vald_preds > 0,
-                            class_names=["Sick","Healthy"])})
+                        # wandb.log({"best_epoch_train_confusion_matrix" : wandb.plot.confusion_matrix(
+                        #     y_true=train_gt, preds=train_preds > 0,
+                        #     class_names=["Sick","Healthy"])})
+                        # wandb.log({"best_epoch_validation_confusion_matrix" : wandb.plot.confusion_matrix(
+                        #     y_true=vald_gt, preds=vald_preds > 0,
+                        #     class_names=["Sick","Healthy"])})
                         torch.save({
                             'epoch': epoch,
                                 'model_state_dict': self.model.state_dict(),
@@ -184,12 +189,12 @@ class Trainer(object):
                                 }, f"{self.hp['checkpoints']}/{self.hp['name']}/accuracy_based_model.pt")
                         
                 if (max_validation_f1 < f1):
-                    wandb.log({"best_epoch_train_confusion_matrix" : wandb.plot.confusion_matrix(
-                        y_true=train_gt, preds=train_preds > 0,
-                        class_names=["Healthy","Sick"])})
-                    wandb.log({"best_epoch_validation_confusion_matrix" : wandb.plot.confusion_matrix(
-                        y_true=vald_gt, preds=vald_preds > 0,
-                        class_names=["Healthy","Sick"])})
+                    # wandb.log({"best_epoch_train_confusion_matrix" : wandb.plot.confusion_matrix(
+                    #     y_true=train_gt, preds=train_preds > 0,
+                    #     class_names=["Healthy","Sick"])})
+                    # wandb.log({"best_epoch_validation_confusion_matrix" : wandb.plot.confusion_matrix(
+                    #     y_true=vald_gt, preds=vald_preds > 0,
+                    #     class_names=["Healthy","Sick"])})
                     torch.save({
                         'epoch': epoch,
                             'model_state_dict': self.model.state_dict(),
@@ -202,7 +207,7 @@ class Trainer(object):
 
                 max_validation_f1 = max(max_validation_f1,f1)
                 max_validation_acc = max(max_validation_acc,accuracy)
-                wandb.run.summary["validation_accuracy.max"] = max_validation_acc
+                # wandb.run.summary["validation_accuracy.max"] = max_validation_acc
 
                 if (accuracy.item()>last_acc):
                     last_acc=accuracy.item()
