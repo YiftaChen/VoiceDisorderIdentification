@@ -73,7 +73,7 @@ class BaseTrainer(object):
         last_acc=0
         runs_without_improv=0
 
-        with tqdm(range(self.hp['epochs']),ncols=300) as pbar_epochs:
+        with tqdm(range(self.hp['epochs'])) as pbar_epochs:
             for idx,epoch in enumerate(pbar_epochs):
                 running_loss = 0.0
                 epoch_accuracy = 0.0
@@ -98,7 +98,7 @@ class BaseTrainer(object):
                             epoch_accuracy = sum(epoch_accuracies)/len(epoch_accuracies)                           
                             epoch_loss = sum(epoch_losses)/len(epoch_losses)
                             epoch_class_accuracies = sum(epoch_class_accuracies)/sample_count
-                            pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}% Class Accuracies {epoch_class_accuracies*100}")
+                            pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%")
                     
 
                 train_losses += [running_loss]
@@ -123,16 +123,16 @@ class BaseTrainer(object):
                             vald_accuracies += [accuracy]                            
                             vald_losses += [loss]
                             vald_class_accuracies += [class_accuracies]
-                            t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%, class accuracies {class_accuracies/sample_count}")            
+                            t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%")            
                 if epoch%5==0:
                     classes = list(core.params.PathologiesToIndex.keys())
                     cf_matrix = multilabel_confusion_matrix(vald_true, vald_predictions)
                     # assert False, f"shape of cf_matrix {cf_matrix.shape}"
                     for c in range(cf_matrix.shape[0]):
-                        df_cm = pd.DataFrame(cf_matrix[c,:,:]/np.sum(cf_matrix[c,:,:]) *10, index = ["True","False"],
-                                            columns = ["True","False"])
+                        df_cm = pd.DataFrame(cf_matrix[c], index = ["Not Sick Pred","Sick Pred"],
+                                            columns = ["Not Sick GT","Sick GT"])
                         plt.figure(figsize = (12,7))
-                        sn.heatmap(df_cm, annot=True)
+                        sn.heatmap(df_cm, annot=True,fmt='g')
                         plt.savefig(f'/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
 
 
@@ -150,7 +150,7 @@ class BaseTrainer(object):
                     runs_without_improv+=1
                 # pbar_epochs.set_description(f"validation epoch {epoch} validation class accuracies {vald_class_acc}")            
 
-                pbar_epochs.set_description(f"validation epoch {epoch}, train acc {'{:.2f}'.format(epoch_accuracy.item())}, validation acc {'{:.2f}'.format(accuracy.item())} validation class accuracies {vald_class_acc}")            
+                pbar_epochs.set_description(f"validation epoch {epoch}, train acc {'{:.2f}'.format(epoch_accuracy.item())}, validation acc {'{:.2f}'.format(accuracy.item())}")            
 
                 if (runs_without_improv>=self.early_stop):
                     vald_losses += [vald_loss]

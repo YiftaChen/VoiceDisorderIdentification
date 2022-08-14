@@ -5,8 +5,6 @@ from numpy import inner
 from architecture.backend.yamnet.model import yamnet,Identity
 import torch
 import torch.nn as nn
-import s3prl.hub 
-from transformers import Wav2Vec2Processor, HubertModel
 import torchaudio.pipelines
 import math
 import torch.nn.functional as F

@@ -9,7 +9,7 @@ from architecture.backend.yamnet.model import yamnet
 from architecture.backend.yamnet.model import yamnet_category_metadata
 
 from architecture.classifier.classification import YamnetClassifier,Wav2Vec2Classifier,HubertMulticlassClassifier,HubertClassifier
-from datasets.SvdExDataset import create_datasets
+from datasets.SvdExDataset import create_datasets_split_by_subjects
 import trainer.InclusiveMulticlassTrainer as svd_trainer
 import torch.nn as nn
 import torch.optim 
@@ -38,11 +38,11 @@ def train_model(config):
     torch.autograd.set_detect_anomaly(True)
     directory = core.params.dataset_locations[socket.gethostname()]
     
-    datasets = create_datasets(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=config['filter_gender'],classification_binary=config['binary_classification'])
+    datasets = create_datasets_split_by_subjects(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=config['filter_gender'],classification_binary=config['binary_classification'])
 
     model = HubertMulticlassClassifier(config).to(device="cuda:0")  
     # print(model)
-    loss = nn.BCEWithLogitsLoss()
+    loss = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([1000]*11))
     # params_non_frozen = filter(lambda p: p.requires_grad, model.parameters())
     # assert False, f"model params {model}"
 

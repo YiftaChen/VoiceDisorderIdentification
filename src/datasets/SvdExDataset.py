@@ -58,20 +58,56 @@ def create_datasets(root_dir,split:tuple,hp,filter_gender=None,seed=None,**kwarg
                 data[subject][pathology]=[path]
             else:
                 data[subject][pathology]+=[path]
-        files_array = [(list(sublist[1].items())[0][1],list(sublist[1].keys())) for sublist in data.items() for entry in sublist]
+        files_array = [(list(sublist[1].items())[0][1],list(sublist[1].keys())) for sublist in data.items()]
         files_array =  [(item,tup[1]) for tup in files_array for item in tup[0]]
+
 
     if seed == None:    
         seed = random.randrange(sys.maxsize)
     random.Random(seed).shuffle(files_array)
 
-    split = [int(s * len(files_array))for s in split][:-1]
+    split = [int(s * len(data.keys()))for s in split][:-1]
 
     files_split = np.split(files_array, split)
 
     hp['seed']=seed
+    assert False, f"files split {files_split}"
     splits = [SvdExtendedVoiceDataset(sp,hp,**kwargs) for sp in files_split]
 
+    return splits
+
+def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None,seed=None,**kwargs)->list():
+    assert sum(split)==1, f"Splits fraction array should sum up to 1"
+    split = np.cumsum(split)
+    files_array = []
+    if hp["filter_gender"] != None:
+        root_dir=os.path.join(root_dir,hp["filter_gender"])
+    for root, dirs, files in os.walk(root_dir):
+        files_array += [os.path. join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
+    if kwargs['classification_binary']!=True:
+        data = {}
+        subjects = [(path,path.split('/')[-3],path.split('/')[-1].split('-')[0]) for path in files_array]
+        for path,pathology,subject in subjects:
+            if pathology == "Healthy":
+                continue
+            if subject not in data:
+                data[subject]={}
+            if pathology not in data[subject].keys():
+                data[subject][pathology]=[path]
+            else:
+                data[subject][pathology]+=[path]
+
+    if seed == None:    
+        seed = random.randrange(sys.maxsize)
+    random.Random(seed).shuffle(files_array)
+
+    split = [int(s * len(data.keys()))for s in split][:-1]
+    subjects_split = np.split(list(data.keys()),split)
+    files_array_splits = []
+    for sp in subjects_split:
+        files_array_splits += [[(f,list(data[key].keys())) for key in sp for d in data[key] for f in data[key][d]]]
+    hp['seed']=seed
+    splits = [SvdExtendedVoiceDataset(sp,hp,**kwargs) for sp in files_array_splits]
     return splits
 
 # TODO: make this inherit AudioFolderDataset
@@ -181,7 +217,7 @@ if __name__ == "__main__":
     hp["filter_pitch"] = None
     hp["filter_letter"] = None
     hp["filter_gender"] = None
-    sets = create_datasets(r"/home/yiftach.ede/data/SVD",split=(0.8,0.1,0.1),hp=hp,filter_gender=None,classification_binary=False)
+    sets = create_datasets_split_by_subjects(r"/home/yiftach.ede@staff.technion.ac.il/data/SVD",split=(0.8,0.1,0.1),hp=hp,filter_gender=None,classification_binary=False)
     loader =  DataLoader(
             sets[0],
             batch_size=20,
