@@ -19,7 +19,9 @@ dataset_locations = {
 }
 
 project_dirs = {
-    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/VoiceDisorderIdentification"
+    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/VoiceDisorderIdentification",
+    "sipl-gpu40-u.staff.technion.ac.il":"/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification"
+
 }
 
 project_dir = project_dirs[socket.gethostname()]

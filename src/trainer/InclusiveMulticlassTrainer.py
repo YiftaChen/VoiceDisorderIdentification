@@ -17,12 +17,11 @@ class MulticlassTrainer(BaseTrainer):
         loss.backward()
         self.optimizer.step()
         
-        predictions = outputs.detach()>0
+        predictions = outputs>0
 
         len_predictions = torch.numel(y)
         accuracy = torch.sum(predictions==y)/len_predictions      
-        per_class_accuracy = torch.sum(predictions==y,axis=0)/y.shape[0]
-        return BatchResult(predictions,loss,accuracy,per_class_accuracy)
+        return BatchResult(predictions.cpu().detach().numpy(),loss,accuracy)
 
     def validate_batch(self, sample) -> BatchResult:
         x = sample['data'].to(device=self.device)
@@ -31,8 +30,7 @@ class MulticlassTrainer(BaseTrainer):
         with torch.no_grad():
             outputs = self.model(x)
             loss = self.criterion(outputs,y)            
-            predictions = outputs.detach()>0
+            predictions = outputs>0
             len_predictions = torch.numel(y)
             accuracy = torch.sum(predictions==y)/len_predictions             
-            per_class_accuracy = torch.sum(predictions==y,axis=0)
-        return BatchResult(predictions,loss,accuracy,per_class_accuracy)
+            return BatchResult(predictions.cpu().detach().numpy(),loss,accuracy)

@@ -13,10 +13,9 @@ import seaborn as sn
 import pandas as pd
 import matplotlib.pyplot as plt
 class BatchResult(NamedTuple):   
-    predictions: torch.BoolTensor 
+    predictions: np.ndarray 
     loss: float
     accuracy: float
-    per_class_accuracy: torch.FloatTensor
 
 class BaseTrainer(object):
     def __init__(self,datasets,model,optimizer,hyper_params,early_stop=float('inf'),device=None,verbose=False,logResults=True) -> None:
@@ -80,32 +79,27 @@ class BaseTrainer(object):
                 epoch_accuracy = 0.0
                 epoch_accuracies = []               
                 epoch_losses = []
-                epoch_class_accuracies = []
                 sample_count = 0
                 with tqdm(self.train_set,disable=self.disableTQDM) as pbar:
                     for idx,sample in enumerate(pbar): 
                         batchRes = self.train_batch(sample)
                         sample_count += sample['data'].shape[0]
                         accuracy = batchRes.accuracy
-                        loss = batchRes.loss
-                        class_accuracies = batchRes.per_class_accuracy
+                        loss = batchRes.loss.detach()
                         running_loss+=loss
-                        train_accuracies += [accuracy]                       
+                        train_accuracies += [accuracy.detach()]                       
                         epoch_losses += [loss]
-                        epoch_accuracies += [accuracy]                        
-                        epoch_class_accuracies += [class_accuracies]
+                        epoch_accuracies += [accuracy.detach()]                        
                         pbar.set_description(f"train epoch {epoch}, train loss is {loss.item()}, Accuracy {accuracy*100}% ")
                         if idx == len(self.train_set)-1 :
                             epoch_accuracy = sum(epoch_accuracies)/len(epoch_accuracies)                           
                             epoch_loss = sum(epoch_losses)/len(epoch_losses)
-                            epoch_class_accuracies = sum(epoch_class_accuracies)/sample_count
                             pbar.set_description(f"train epoch {epoch}, train loss:{running_loss} , Mean Accuracy:{epoch_accuracy*100}%")
                     
 
                 train_losses += [running_loss]
                 vald_accuracies = []   
                 vald_losses = []    
-                vald_class_accuracies = []    
                 vald_predictions = []
                 vald_true = []
                 vald_sample_count = 0
@@ -114,33 +108,30 @@ class BaseTrainer(object):
                         for idx,sample in enumerate(t):                            
                             batchRes = self.validate_batch(sample)
                             vald_sample_count += sample['data'].shape[0]
-                            accuracy = batchRes.accuracy.cpu()
-                            loss = batchRes.loss.cpu()
-                            class_accuracies = batchRes.per_class_accuracy
-                            vald_predictions.extend(batchRes.predictions.cpu().numpy())
-                            vald_true.extend(sample['classification'].cpu().numpy())
+                            accuracy = batchRes.accuracy.cpu().detach()
+                            loss = batchRes.loss.cpu().detach()
+                            vald_predictions.extend(batchRes)
+                            vald_true.extend(sample['classification'].cpu().detach().numpy())
                             vald_loss+=loss
 
                             vald_accuracies += [accuracy]                            
                             vald_losses += [loss]
-                            vald_class_accuracies += [class_accuracies]
                             t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%")            
-                if epoch%5==0:
-                    classes = list(core.params.PathologiesToIndex.keys())
-                    cf_matrix = multilabel_confusion_matrix(vald_true, vald_predictions)
-                    # assert False, f"shape of cf_matrix {cf_matrix.shape}"
-                    for c in range(cf_matrix.shape[0]):
-                        df_cm = pd.DataFrame(cf_matrix[c], index = ["Not Sick Pred","Sick Pred"],
-                                            columns = ["Not Sick GT","Sick GT"])
-                        plt.figure(figsize = (12,7))
-                        sn.heatmap(df_cm, annot=True,fmt='g')
-                        os.makedirs(core.params.project_dir + f'/src/confusion_matrices',exist_ok=True)
-                        plt.savefig(core.params.project_dir + f'/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
-
+                # if epoch%5==0:
+                #     classes = list(core.params.PathologiesToIndex.keys())
+                #     cf_matrix = multilabel_confusion_matrix(vald_true, vald_predictions)
+                #     # assert False, f"shape of cf_matrix {cf_matrix.shape}"
+                #     for c in range(cf_matrix.shape[0]):
+                #         df_cm = pd.DataFrame(cf_matrix[c], index = ["Not Sick Pred","Sick Pred"],
+                #                             columns = ["Not Sick GT","Sick GT"])
+                #         plt.figure(figsize = (12,7))
+                #         sn.heatmap(df_cm, annot=True,fmt='g')
+                #         os.makedirs(core.params.project_dir + f'/src/confusion_matrices',exist_ok=True)
+                #         plt.savefig(core.params.project_dir + f'/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
+                #         plt.close('all')
 
                 accuracy = np.array(vald_accuracies).mean()               
                 loss = np.array(vald_losses).mean()
-                vald_class_acc = sum(vald_class_accuracies) / vald_sample_count
                 if (self.logResults):
                     tune.report(valid_acc=accuracy,train_acc=epoch_accuracy.item())                                            
                     tune.report(valid_loss=loss,train_loss=epoch_loss.item())                        
@@ -154,9 +145,9 @@ class BaseTrainer(object):
 
                 pbar_epochs.set_description(f"validation epoch {epoch}, train acc {'{:.2f}'.format(epoch_accuracy.item())}, validation acc {'{:.2f}'.format(accuracy.item())}")            
 
-                if (runs_without_improv>=self.early_stop):
-                    vald_losses += [vald_loss]
-                    return self.model,train_losses,vald_loss, train_accuracies    
+                # if (runs_without_improv>=self.early_stop):
+                    # vald_losses += [vald_loss]
+                    # return self.model,train_losses,vald_loss, train_accuracies    
 
                 vald_losses += [vald_loss]
 
