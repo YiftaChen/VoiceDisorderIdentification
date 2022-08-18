@@ -8,21 +8,30 @@ yamnet params are retrieved from:
 import json
 import socket
 
+# ~~~~~~~~~~~~~~~~~~~~ YIFTACH CONFIG ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 # dataset_locations = {
 #     "sipl-gpu40-u.staff.technion.ac.il":"/home/yiftach.ede@staff.technion.ac.il/data/SVD",
-#     "sipl-gpu2-u.staff.technion.ac.il":"/home/yiftach.ede/data/SVD"
 # }
 
-dataset_locations = {
-    "sipl-gpu40-u.staff.technion.ac.il":"/home/yiftach.ede@staff.technion.ac.il/data/SVD",
+# project_dirs = {
+#     "sipl-gpu40-u.staff.technion.ac.il":"/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification"
+# }
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~ CHEN CONFIG ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+dataset_locations = {    
     "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/SVD"
 }
 
 project_dirs = {
-    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/VoiceDisorderIdentification",
-    "sipl-gpu40-u.staff.technion.ac.il":"/home/yiftach.ede@staff.technion.ac.il/VoiceDisorderIdentification"
-
+    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/VoiceDisorderIdentification",    
 }
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 project_dir = project_dirs[socket.gethostname()]
 checkpoints_dir = project_dir + "/checkpoints"

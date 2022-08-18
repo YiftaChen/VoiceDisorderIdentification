@@ -117,18 +117,18 @@ class BaseTrainer(object):
                             vald_accuracies += [accuracy]                            
                             vald_losses += [loss]
                             t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%")            
-                # if epoch%5==0:
-                #     classes = list(core.params.PathologiesToIndex.keys())
-                #     cf_matrix = multilabel_confusion_matrix(vald_true, vald_predictions)
-                #     # assert False, f"shape of cf_matrix {cf_matrix.shape}"
-                #     for c in range(cf_matrix.shape[0]):
-                #         df_cm = pd.DataFrame(cf_matrix[c], index = ["Not Sick Pred","Sick Pred"],
-                #                             columns = ["Not Sick GT","Sick GT"])
-                #         plt.figure(figsize = (12,7))
-                #         sn.heatmap(df_cm, annot=True,fmt='g')
-                #         os.makedirs(core.params.project_dir + f'/src/confusion_matrices',exist_ok=True)
-                #         plt.savefig(core.params.project_dir + f'/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
-                #         plt.close('all')
+                if epoch%5==0:
+                    classes = list(core.params.PathologiesToIndex.keys())
+                    cf_matrix = multilabel_confusion_matrix(vald_true, vald_predictions)
+                    # assert False, f"shape of cf_matrix {cf_matrix.shape}"
+                    for c in range(cf_matrix.shape[0]):
+                        df_cm = pd.DataFrame(cf_matrix[c], index = ["Not Sick Pred","Sick Pred"],
+                                            columns = ["Not Sick GT","Sick GT"])
+                        plt.figure(figsize = (12,7))
+                        sn.heatmap(df_cm, annot=True,fmt='g')
+                        os.makedirs(core.params.project_dir + f'/src/confusion_matrices',exist_ok=True)
+                        plt.savefig(core.params.project_dir + f'/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
+                        plt.close('all')
 
                 accuracy = np.array(vald_accuracies).mean()               
                 loss = np.array(vald_losses).mean()
