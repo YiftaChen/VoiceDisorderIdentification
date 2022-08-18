@@ -84,6 +84,11 @@ def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None
         root_dir=os.path.join(root_dir,hp["filter_gender"])
     for root, dirs, files in os.walk(root_dir):
         files_array += [os.path. join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
+
+    if seed == None:    
+        seed = random.randrange(sys.maxsize)
+    random.Random(seed).shuffle(files_array)
+
     if kwargs['classification_binary']!=True:
         data = {}
         subjects = [(path,path.split('/')[-3],path.split('/')[-1].split('-')[0]) for path in files_array]
@@ -97,9 +102,8 @@ def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None
             else:
                 data[subject][pathology]+=[path]
 
-    if seed == None:    
-        seed = random.randrange(sys.maxsize)
-    random.Random(seed).shuffle(files_array)
+    
+    
 
     split = [int(s * len(data.keys()))for s in split][:-1]
     subjects_split = np.split(list(data.keys()),split)

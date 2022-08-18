@@ -18,6 +18,7 @@ import ray
 import pickle
 import socket
 import core
+from tqdm import tqdm
 
 from ray.tune.integration.wandb import (
     WandbLoggerCallback,
@@ -27,6 +28,15 @@ from ray.tune.integration.wandb import (
 import wandb
 from itertools import chain, combinations
 
+def get_metadata_of_dataset(dataset):
+    bins = torch.zeros(11)
+    size = 0
+    with tqdm(dataset) as pbar:                        
+        for sample in pbar:
+            bins += sample['classification']
+            size += 1
+
+    return bins,size
 
 
 count = 0
@@ -38,19 +48,29 @@ def train_model(config):
     
     datasets = create_datasets_split_by_subjects(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=config['filter_gender'],classification_binary=config['binary_classification'])
 
+    train_dataset = datasets[0]    
+    train_data = get_metadata_of_dataset(train_dataset)
+    print('train_data')
+    print(train_data)
+
+    valid_dataset = datasets[1]
+    valid_data = get_metadata_of_dataset(valid_dataset)
+    print('valid_data')
+    print(valid_data)
+
+    # bins = get_weight_of_classifications_in_dataset(train_dataset)
+    # print(bins)
+
     model = HubertMulticlassClassifier(config).to(device="cuda:0")  
     # print(model)
-    loss = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([1000]*11))
-    # params_non_frozen = filter(lambda p: p.requires_grad, model.parameters())
-    # assert False, f"model params {model}"
+
+    # loss = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([1000]*11))
+    loss = None   
 
     opt = torch.optim.Adam(
         [
             dict(params=model.classifier.parameters()),
-            dict(params=model.model.encoder.parameters(),lr=config['backend_encoder_lr']),
-            # dict(params=model.backend.layer13.parameters(),lr=config['yamnet_l13_lr']),
-            # dict(params=model.backend.layer12.parameters(),lr=config['lr']*0.01),
-            # dict(params=model.backend.layer11.parameters(),lr=config['lr']*0.01),
+            dict(params=model.model.encoder.parameters(),lr=config['backend_encoder_lr']),          
         ]
         ,lr=config["lr"],weight_decay = config['l2_reg'])
     hyper_params = {
@@ -62,7 +82,7 @@ def train_model(config):
         'checkpoints':config['checkpoints'],
         'name': run_name,
     }
-    trainer = svd_trainer.MulticlassTrainer(datasets=datasets,model=model,optimizer=opt,early_stop=200,hyper_params=hyper_params,verbose=False)
+    trainer = svd_trainer.MulticlassTrainer(datasets=datasets,model=model,optimizer=opt,early_stop=200,hyper_params=hyper_params,verbose=False,criterion=loss)
     model = trainer.train()
     
 config={
@@ -81,7 +101,7 @@ config={
     'filter_gender':None,
     'l2_reg':0,
 
-    "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"ConvMulticlassClassificationHead"},
+    # "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"ConvMulticlassClassificationHead"},
     "checkpoints": core.params.checkpoints_dir
     }
      

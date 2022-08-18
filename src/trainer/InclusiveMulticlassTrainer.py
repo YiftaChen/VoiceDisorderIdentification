@@ -4,9 +4,12 @@ import torch.nn as nn
 # from math import prod
 
 class MulticlassTrainer(BaseTrainer):
-    def __init__(self, datasets, model, optimizer, hyper_params, early_stop=float('inf'), device=None, verbose=False, logResults=True) -> None:
+    def __init__(self, datasets, model, optimizer, hyper_params, early_stop=float('inf'), device=None, verbose=False, logResults=True, criterion=None) -> None:
         super().__init__(datasets, model, optimizer, hyper_params, early_stop, device, verbose, logResults)     
-        self.criterion = nn.CrossEntropyLoss()   
+        if criterion == None:
+            self.criterion = nn.CrossEntropyLoss()   
+        else:
+            self.criterion = criterion
 
     def train_batch(self, sample) -> BatchResult:        
         x = sample['data'].to(device=self.device)

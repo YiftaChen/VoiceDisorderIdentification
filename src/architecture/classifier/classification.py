@@ -190,10 +190,10 @@ class HubertClassifier(nn.Module):
         #                 activation]
         #     input_dim = dimension
         self.input_dim = input_dim*49
-        self.classifier = LSTMClassificationHead(1,bidirectional=hp["bidirectional"],
-                                                layer_count=hp["lstm_layer_count"],
-                                                hidden_dim=hp["hidden_dim"],
-                                                dropout=hp["dropout"])
+        # self.classifier = LSTMClassificationHead(1,bidirectional=hp["bidirectional"],
+        #                                         layer_count=hp["lstm_layer_count"],
+        #                                         hidden_dim=hp["hidden_dim"],
+        #                                         dropout=hp["dropout"])
         # self.classifier.classifier[6] = nn.Linear(4096,out_dim,False)
         # assert False, f"classifier {self.classifier}"
         # self.classifier=ConvolutionalClassificationHead(1,out_dim,activation=activation,

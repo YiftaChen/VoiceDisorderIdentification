@@ -26,13 +26,13 @@ class BaseTrainer(object):
             batch_size=hyper_params['train_batch_size'],
             shuffle=True,
             num_workers=hyper_params['num_workers']
-        )
+        )                
         self.val_set =  DataLoader(
             self.val_set,
             batch_size=hyper_params['vald_batch_size'],
             shuffle=True,
             num_workers=hyper_params['num_workers']
-        )
+        ) 
         self.test_set =  DataLoader(
             self.test_set,
             batch_size=hyper_params['test_batch_size'],
@@ -73,6 +73,7 @@ class BaseTrainer(object):
         last_acc=0
         runs_without_improv=0
 
+        self.model.train()
         with tqdm(range(self.hp['epochs'])) as pbar_epochs:
             for idx,epoch in enumerate(pbar_epochs):
                 running_loss = 0.0
@@ -104,13 +105,15 @@ class BaseTrainer(object):
                 vald_true = []
                 vald_sample_count = 0
                 vald_loss = 0.0
+
+                self.model.eval()
                 with tqdm(self.val_set,disable=self.disableTQDM) as t:
                         for idx,sample in enumerate(t):                            
                             batchRes = self.validate_batch(sample)
                             vald_sample_count += sample['data'].shape[0]
                             accuracy = batchRes.accuracy.cpu().detach()
                             loss = batchRes.loss.cpu().detach()
-                            vald_predictions.extend(batchRes)
+                            vald_predictions.extend(batchRes.predictions)
                             vald_true.extend(sample['classification'].cpu().detach().numpy())
                             vald_loss+=loss
 
@@ -122,8 +125,8 @@ class BaseTrainer(object):
                     cf_matrix = multilabel_confusion_matrix(vald_true, vald_predictions)
                     # assert False, f"shape of cf_matrix {cf_matrix.shape}"
                     for c in range(cf_matrix.shape[0]):
-                        df_cm = pd.DataFrame(cf_matrix[c], index = ["Not Sick Pred","Sick Pred"],
-                                            columns = ["Not Sick GT","Sick GT"])
+                        df_cm = pd.DataFrame(cf_matrix[c], index = ["Not Sick GT","Sick GT"],
+                                            columns = ["Not Sick Pred","Sick Pred"])
                         plt.figure(figsize = (12,7))
                         sn.heatmap(df_cm, annot=True,fmt='g')
                         os.makedirs(core.params.project_dir + f'/src/confusion_matrices',exist_ok=True)
@@ -159,6 +162,7 @@ class BaseTrainer(object):
         test_precisions = []
         test_recalls = []
 
+        self.model.eval()
         with tqdm(self.test_set) as t:
                 for idx,sample in enumerate(t):
                     x = sample['data'].to(device=self.device)
