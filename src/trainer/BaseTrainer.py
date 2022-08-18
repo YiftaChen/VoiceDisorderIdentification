@@ -8,7 +8,7 @@ import numpy as np
 from ray import tune
 import os
 import core.params
-from sklearn.metrics import multilabel_confusion_matrix
+from sklearn.metrics import multilabel_confusion_matrix, precision_recall_curve
 import seaborn as sn
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -18,7 +18,7 @@ class BatchResult(NamedTuple):
     accuracy: float
 
 class BaseTrainer(object):
-    def __init__(self,datasets,model,optimizer,hyper_params,early_stop=float('inf'),device=None,verbose=False,logResults=True) -> None:
+    def __init__(self,datasets,model,optimizer,hyper_params,early_stop=float('inf'),device=None,verbose=False,logResults=True,confusion_mat_every=5) -> None:
         # self.dl = dataloader
         self.train_set, self.val_set, self.test_set = datasets        
         self.train_set =  DataLoader(
@@ -44,6 +44,7 @@ class BaseTrainer(object):
         self.model = model
         self.optimizer = optimizer
         self.logResults = logResults
+        self.confusion_mat_every = confusion_mat_every
         
         self.hp = hyper_params
         if (device is not None):
@@ -65,6 +66,8 @@ class BaseTrainer(object):
     def validate_batch(self, sample) -> BatchResult:
         pass
 
+    def process_valid_results(self, valid_pred, valid_gt, epoch):
+        pass
 
     def train(self):
         train_losses = []        
@@ -120,18 +123,8 @@ class BaseTrainer(object):
                             vald_accuracies += [accuracy]                            
                             vald_losses += [loss]
                             t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%")            
-                if epoch%5==0:
-                    classes = list(core.params.PathologiesToIndex.keys())
-                    cf_matrix = multilabel_confusion_matrix(vald_true, vald_predictions)
-                    # assert False, f"shape of cf_matrix {cf_matrix.shape}"
-                    for c in range(cf_matrix.shape[0]):
-                        df_cm = pd.DataFrame(cf_matrix[c], index = ["Not Sick GT","Sick GT"],
-                                            columns = ["Not Sick Pred","Sick Pred"])
-                        plt.figure(figsize = (12,7))
-                        sn.heatmap(df_cm, annot=True,fmt='g')
-                        os.makedirs(core.params.project_dir + f'/src/confusion_matrices',exist_ok=True)
-                        plt.savefig(core.params.project_dir + f'/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
-                        plt.close('all')
+                
+                self.process_valid_results(vald_predictions, vald_true, epoch)                  
 
                 accuracy = np.array(vald_accuracies).mean()               
                 loss = np.array(vald_losses).mean()

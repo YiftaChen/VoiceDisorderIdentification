@@ -1,15 +1,21 @@
 from trainer.BaseTrainer import BaseTrainer,BatchResult
 import torch
 import torch.nn as nn
+import os
+import matplotlib.pyplot as plt
+import seaborn as sn
+import core
+import pandas as pd
+from sklearn.metrics import multilabel_confusion_matrix, precision_recall_curve
 # from math import prod
 
 class MulticlassTrainer(BaseTrainer):
-    def __init__(self, datasets, model, optimizer, hyper_params, early_stop=float('inf'), device=None, verbose=False, logResults=True, criterion=None) -> None:
-        super().__init__(datasets, model, optimizer, hyper_params, early_stop, device, verbose, logResults)     
+    def __init__(self, datasets, model, optimizer, hyper_params, early_stop=float('inf'), device=None, verbose=False, logResults=True, criterion=None, confusion_mat_every=5) -> None:
+        super().__init__(datasets, model, optimizer, hyper_params, early_stop, device, verbose, logResults,confusion_mat_every)     
         if criterion == None:
             self.criterion = nn.CrossEntropyLoss()   
         else:
-            self.criterion = criterion
+            self.criterion = criterion    
 
     def train_batch(self, sample) -> BatchResult:        
         x = sample['data'].to(device=self.device)
@@ -37,3 +43,20 @@ class MulticlassTrainer(BaseTrainer):
             len_predictions = torch.numel(y)
             accuracy = torch.sum(predictions==y)/len_predictions             
             return BatchResult(predictions.cpu().detach().numpy(),loss,accuracy)
+
+    def log_confusion_matrix(self, valid_pred, valid_gt, epoch):        
+        classes = list(core.params.PathologiesToIndex.keys())
+        cf_matrix = multilabel_confusion_matrix(valid_gt, valid_pred)
+        # assert False, f"shape of cf_matrix {cf_matrix.shape}"
+        for c in range(cf_matrix.shape[0]):
+            df_cm = pd.DataFrame(cf_matrix[c], index = ["Not Sick GT","Sick GT"],
+                                columns = ["Not Sick Pred","Sick Pred"])
+            plt.figure(figsize = (12,7))
+            sn.heatmap(df_cm, annot=True,fmt='g')
+            os.makedirs(core.params.project_dir + f'/src/confusion_matrices',exist_ok=True)
+            plt.savefig(core.params.project_dir + f'/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
+            plt.close('all') 
+
+    def process_valid_results(self, valid_pred, valid_gt, epoch):
+        if epoch % self.confusion_mat_every == 0:
+            self.log_confusion_matrix(valid_pred, valid_gt, epoch)

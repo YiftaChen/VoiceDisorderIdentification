@@ -35,8 +35,15 @@ def get_metadata_of_dataset(dataset):
         for sample in pbar:
             bins += sample['classification']
             size += 1
-
+    
     return bins,size
+
+def get_pos_weights(pos_bins_in_dataset, amount_of_samples_in_dataset):
+    neg_bins_in_dataset = amount_of_samples_in_dataset - pos_bins_in_dataset
+    pos_weights = neg_bins_in_dataset / (pos_bins_in_dataset + 1e-7)
+    return pos_weights
+
+
 
 
 count = 0
@@ -49,14 +56,18 @@ def train_model(config):
     datasets = create_datasets_split_by_subjects(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=config['filter_gender'],classification_binary=config['binary_classification'])
 
     train_dataset = datasets[0]    
-    train_data = get_metadata_of_dataset(train_dataset)
-    print('train_data')
-    print(train_data)
+    train_data_bins,train_data_size = get_metadata_of_dataset(train_dataset)
+    print('train_data_bins')
+    print(train_data_bins)
+    print('train_data_size')
+    print(train_data_size)
 
     valid_dataset = datasets[1]
-    valid_data = get_metadata_of_dataset(valid_dataset)
-    print('valid_data')
-    print(valid_data)
+    valid_data_bins,valid_data_size = get_metadata_of_dataset(valid_dataset)
+    print('valid_data_bins')
+    print(valid_data_bins)
+    print('valid_data_size')
+    print(valid_data_size)
 
     # bins = get_weight_of_classifications_in_dataset(train_dataset)
     # print(bins)
@@ -64,8 +75,17 @@ def train_model(config):
     model = HubertMulticlassClassifier(config).to(device="cuda:0")  
     # print(model)
 
-    # loss = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([1000]*11))
-    loss = None   
+    pos_weights = get_pos_weights(train_data_bins,train_data_size).to(device="cuda:0")
+    print('pos_weights')
+    print(pos_weights)
+
+    pos_weights_valid = get_pos_weights(valid_data_bins,valid_data_size).to(device="cuda:0")
+    print('pos_weights_valid')
+    print(pos_weights_valid)
+    
+
+    loss = nn.BCEWithLogitsLoss(pos_weight=pos_weights*10)
+    # loss = None   
 
     opt = torch.optim.Adam(
         [
@@ -74,15 +94,17 @@ def train_model(config):
         ]
         ,lr=config["lr"],weight_decay = config['l2_reg'])
     hyper_params = {
-        'train_batch_size':200,
-        'vald_batch_size':200,
-        'test_batch_size':200,
+        'train_batch_size':128,
+        'vald_batch_size':128,
+        'test_batch_size':128,
         'num_workers':2,
         'epochs':100,
         'checkpoints':config['checkpoints'],
         'name': run_name,
     }
-    trainer = svd_trainer.MulticlassTrainer(datasets=datasets,model=model,optimizer=opt,early_stop=200,hyper_params=hyper_params,verbose=False,criterion=loss)
+    trainer =\
+     svd_trainer.MulticlassTrainer(datasets=datasets,model=model,optimizer=opt,\
+        early_stop=200,hyper_params=hyper_params,verbose=True,criterion=loss,confusion_mat_every=1)    
     model = trainer.train()
     
 config={
@@ -90,15 +112,11 @@ config={
     'lr':1e-3,
     'backend_encoder_lr':1e-4,
     'augmentations':None,
-    'mlp_layers':[],
-    # 'delta':tune.grid_search([10]),
+    'mlp_layers':[],    
     'configuration':"base",
     'filter_letter':None,
-    'filter_pitch':None,
-    # 'classification_inner_dim':tune.grid_search([1,64]),
-    # 'classification_head_strides':tune.grid_search([(1,2)]),
-    # 'classification_head_kernels':tune.grid_search([[(7,7)]*5,[(7,7)]*3,[(7,7)]*4,[(5,5)]*5,[(5,5)]*4,[(5,5)]*3,[(3,3)]*5,[(3,3)]*4,[(3,3)]*3]),
-    'filter_gender':None,
+    'filter_pitch':None,   
+    'filter_gender':'male',
     'l2_reg':0,
 
     # "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"ConvMulticlassClassificationHead"},
