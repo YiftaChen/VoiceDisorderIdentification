@@ -94,9 +94,9 @@ def train_model(config):
         ]
         ,lr=config["lr"],weight_decay = config['l2_reg'])
     hyper_params = {
-        'train_batch_size':128,
-        'vald_batch_size':128,
-        'test_batch_size':128,
+        'train_batch_size':64,
+        'vald_batch_size':64,
+        'test_batch_size':64,
         'num_workers':2,
         'epochs':100,
         'checkpoints':config['checkpoints'],
@@ -116,7 +116,7 @@ config={
     'configuration':"base",
     'filter_letter':None,
     'filter_pitch':None,   
-    'filter_gender':'male',
+    'filter_gender': None,
     'l2_reg':0,
 
     # "wandb": {"api_key": "19e347e092a58ca11a380ad43bd1fd5103f4d14a", "project": "VoiceDisorder","group":"ConvMulticlassClassificationHead"},

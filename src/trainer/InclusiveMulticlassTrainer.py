@@ -69,7 +69,16 @@ class MulticlassTrainer(BaseTrainer):
 
             os.makedirs(core.params.project_dir + f'/src/precision_recalls',exist_ok=True)
             display = PrecisionRecallDisplay(recall=rec, precision=prec, average_precision=avg_prec)
-            display.plot().figure_.savefig(core.params.project_dir + f'/src/precision_recalls/output_{epoch}_{classes[i]}.png')   
+            display.plot().figure_.savefig(core.params.project_dir + f'/src/precision_recalls/output_{epoch}_{classes[i]}.png')  
+
+            os.makedirs(core.params.project_dir + f'/src/average_precision_logs',exist_ok=True)
+            file_mode = 'a'
+            if epoch == 0:
+                file_mode = 'w+'
+            
+            f = open(core.params.project_dir + f'/src/average_precision_logs/{classes[i]}_log.txt',file_mode)
+            f.write(f'epoch_{epoch}: {str(avg_prec)}\n')
+            f.close()
 
 
     def process_valid_results(self, valid_pred, valid_scores, valid_gt, epoch):
