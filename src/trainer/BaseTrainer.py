@@ -14,6 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 class BatchResult(NamedTuple):   
     predictions: np.ndarray 
+    scores: np.ndarray # the actual score given directly from the network
     loss: float
     accuracy: float
 
@@ -66,7 +67,7 @@ class BaseTrainer(object):
     def validate_batch(self, sample) -> BatchResult:
         pass
 
-    def process_valid_results(self, valid_pred, valid_gt, epoch):
+    def process_valid_results(self, valid_pred, valid_scores, valid_gt, epoch):
         pass
 
     def train(self):
@@ -105,6 +106,7 @@ class BaseTrainer(object):
                 vald_accuracies = []   
                 vald_losses = []    
                 vald_predictions = []
+                vald_scores = []
                 vald_true = []
                 vald_sample_count = 0
                 vald_loss = 0.0
@@ -117,6 +119,7 @@ class BaseTrainer(object):
                             accuracy = batchRes.accuracy.cpu().detach()
                             loss = batchRes.loss.cpu().detach()
                             vald_predictions.extend(batchRes.predictions)
+                            vald_scores.extend(batchRes.scores)
                             vald_true.extend(sample['classification'].cpu().detach().numpy())
                             vald_loss+=loss
 
@@ -124,7 +127,7 @@ class BaseTrainer(object):
                             vald_losses += [loss]
                             t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%")            
                 
-                self.process_valid_results(vald_predictions, vald_true, epoch)                  
+                self.process_valid_results(vald_predictions, vald_scores, vald_true, epoch)                  
 
                 accuracy = np.array(vald_accuracies).mean()               
                 loss = np.array(vald_losses).mean()

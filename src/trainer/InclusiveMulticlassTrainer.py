@@ -6,12 +6,14 @@ import matplotlib.pyplot as plt
 import seaborn as sn
 import core
 import pandas as pd
-from sklearn.metrics import multilabel_confusion_matrix, precision_recall_curve
+import numpy as np
+from sklearn.metrics import multilabel_confusion_matrix, precision_recall_curve, PrecisionRecallDisplay, average_precision_score
 # from math import prod
 
 class MulticlassTrainer(BaseTrainer):
-    def __init__(self, datasets, model, optimizer, hyper_params, early_stop=float('inf'), device=None, verbose=False, logResults=True, criterion=None, confusion_mat_every=5) -> None:
-        super().__init__(datasets, model, optimizer, hyper_params, early_stop, device, verbose, logResults,confusion_mat_every)     
+    def __init__(self, datasets, model, optimizer, hyper_params, early_stop=float('inf'), device=None, verbose=False, logResults=True, criterion=None,classes_amount=11, confusion_mat_every=5) -> None:
+        super().__init__(datasets, model, optimizer, hyper_params, early_stop, device, verbose, logResults,confusion_mat_every)   
+        self.classes_amount = classes_amount
         if criterion == None:
             self.criterion = nn.CrossEntropyLoss()   
         else:
@@ -30,7 +32,7 @@ class MulticlassTrainer(BaseTrainer):
 
         len_predictions = torch.numel(y)
         accuracy = torch.sum(predictions==y)/len_predictions      
-        return BatchResult(predictions.cpu().detach().numpy(),loss,accuracy)
+        return BatchResult(predictions.cpu().detach().numpy(),outputs.cpu().detach().numpy(),loss,accuracy)
 
     def validate_batch(self, sample) -> BatchResult:
         x = sample['data'].to(device=self.device)
@@ -42,7 +44,7 @@ class MulticlassTrainer(BaseTrainer):
             predictions = outputs>0
             len_predictions = torch.numel(y)
             accuracy = torch.sum(predictions==y)/len_predictions             
-            return BatchResult(predictions.cpu().detach().numpy(),loss,accuracy)
+            return BatchResult(predictions.cpu().detach().numpy(),outputs.cpu().detach().numpy(),loss,accuracy)
 
     def log_confusion_matrix(self, valid_pred, valid_gt, epoch):        
         classes = list(core.params.PathologiesToIndex.keys())
@@ -57,6 +59,21 @@ class MulticlassTrainer(BaseTrainer):
             plt.savefig(core.params.project_dir + f'/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
             plt.close('all') 
 
-    def process_valid_results(self, valid_pred, valid_gt, epoch):
+    def log_precision_recall(self, valid_scores, valid_gt, epoch):      
+        valid_proba_t = nn.functional.sigmoid(torch.Tensor(valid_scores))
+        valid_gt_t = np.array(valid_gt)
+        classes = list(core.params.PathologiesToIndex.keys())
+        for i in range(self.classes_amount):
+            prec, rec, thresholds = precision_recall_curve(valid_gt_t[:,i], valid_proba_t[:,i])
+            avg_prec = average_precision_score(valid_gt_t[:,i], valid_proba_t[:,i])         
+
+            os.makedirs(core.params.project_dir + f'/src/precision_recalls',exist_ok=True)
+            display = PrecisionRecallDisplay(recall=rec, precision=prec, average_precision=avg_prec)
+            display.plot().figure_.savefig(core.params.project_dir + f'/src/precision_recalls/output_{epoch}_{classes[i]}.png')   
+
+
+    def process_valid_results(self, valid_pred, valid_scores, valid_gt, epoch):
+        self.log_precision_recall(valid_scores, valid_gt, epoch)
+
         if epoch % self.confusion_mat_every == 0:
             self.log_confusion_matrix(valid_pred, valid_gt, epoch)

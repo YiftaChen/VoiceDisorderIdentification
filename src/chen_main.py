@@ -84,7 +84,7 @@ def train_model(config):
     print(pos_weights_valid)
     
 
-    loss = nn.BCEWithLogitsLoss(pos_weight=pos_weights*10)
+    loss = nn.BCEWithLogitsLoss(pos_weight=pos_weights)
     # loss = None   
 
     opt = torch.optim.Adam(
