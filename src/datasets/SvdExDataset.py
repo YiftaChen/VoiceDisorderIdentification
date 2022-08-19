@@ -76,14 +76,34 @@ def create_datasets(root_dir,split:tuple,hp,filter_gender=None,seed=None,**kwarg
 
     return splits
 
+# removes duplicate recordings from the split.
+# for example, if files_array_splits looks something like this (notice first 3 are the same recording):
+# [('some/path/pathology-A/sub-pathology-AA/123-a_n.wav',['Pathology-A','Pathology-B']),
+#  ('some/path/pathology-A/sub-pathology-AAA/123-a_n.wav',['Pathology-A','Pathology-B']),
+#  ('some/path/pathology-B/sub-pathology-BB/123-a_n.wav',['Pathology-A','Pathology-B']),
+#  ('some/path/pathology-C/sub-pathology-CC/777-a_n.wav',['Pathology-C'])]
+#
+# will result something like:
+# [('some/path/pathology-A/sub-pathology-AA/123-a_n.wav',['Pathology-A','Pathology-B']),
+#  ('some/path/pathology-C/sub-pathology-CC/777-a_n.wav',['Pathology-C])]
+def remove_duplicated_from_files_array_splits(files_array_splits):    
+    files_array_splits_with_names = [(os.path.split(data[0])[1],data) for data in files_array_splits[0]]
+    file_names = []
+    filtered_list = []
+    for (file_name,data) in files_array_splits_with_names:
+        if (file_name not in file_names):
+            file_names.append(file_name)
+            filtered_list.append(data)
+
+    return filtered_list
+
 def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None,seed=None,**kwargs)->list():
-    assert sum(split)==1, f"Splits fraction array should sum up to 1"
-    split = np.cumsum(split)
+    assert sum(split)==1, f"Splits fraction array should sum up to 1"    
     files_array = []
     if hp["filter_gender"] != None:
         root_dir=os.path.join(root_dir,hp["filter_gender"])
     for root, dirs, files in os.walk(root_dir):
-        files_array += [os.path. join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]
+        files_array += [os.path. join(root,f) for f in files if not f.startswith('.') and  f.endswith('.wav')]    
 
     if seed == None:    
         seed = random.randrange(sys.maxsize)
@@ -104,12 +124,23 @@ def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None
 
     
     
-
+    split = np.cumsum(split)
     split = [int(s * len(data.keys()))for s in split][:-1]
     subjects_split = np.split(list(data.keys()),split)
     files_array_splits = []
     for sp in subjects_split:
-        files_array_splits += [[(f,list(data[key].keys())) for key in sp for d in data[key] for f in data[key][d]]]
+        files_split = [[(f,list(data[key].keys())) for key in sp for d in data[key] for f in data[key][d]]]
+
+        # Im not sure if this is intended, but after this, files_array_splits will contain duplicates of the same recording if it has more than one pathology.
+        # Also will contain duplicates if its the same pathology but in different sub-pathologies that were merged by Ariel.
+        # So, for the time being I added this "fix"
+
+        split_filtered = remove_duplicated_from_files_array_splits(files_split)
+        files_array_splits += [split_filtered]
+
+
+
+
     hp['seed']=seed
     splits = [SvdExtendedVoiceDataset(sp,hp,**kwargs) for sp in files_array_splits]
     return splits
@@ -150,8 +181,8 @@ class SvdExtendedVoiceDataset(Dataset):
             samplerate, data = self._load_wav(self.files[index][0])
             classification = self.files[index][1]
             # assert False,f"classification {classification}"
-            if "Healthy" in classification:
-                assert False, f"fuck, classification {classification}"
+            # if "Healthy" in classification:
+            #     assert False, f"fuck, classification {classification}"
             classification_index = [self.class_definitions[index] for index in self.files[index][1]]
         if self.data_transform != None:
             data = self.data_transform(data)

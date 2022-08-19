@@ -54,6 +54,7 @@ def train_model(config):
     directory = core.params.dataset_location
     
     datasets = create_datasets_split_by_subjects(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=config['filter_gender'],classification_binary=config['binary_classification'])
+    
 
     train_dataset = datasets[0]    
     train_data_bins,train_data_size = get_metadata_of_dataset(train_dataset)
@@ -72,7 +73,7 @@ def train_model(config):
     # bins = get_weight_of_classifications_in_dataset(train_dataset)
     # print(bins)
 
-    model = HubertMulticlassClassifier(config).to(device="cuda:0")  
+    model = HubertMulticlassClassifier(config, freeze_backend_grad=False).to(device="cuda:0")  
     # print(model)
 
     pos_weights = get_pos_weights(train_data_bins,train_data_size).to(device="cuda:0")
@@ -85,7 +86,7 @@ def train_model(config):
     
 
     loss = nn.BCEWithLogitsLoss(pos_weight=pos_weights)
-    # loss = None   
+    # loss = nn.BCEWithLogitsLoss()   
 
     opt = torch.optim.Adam(
         [
