@@ -33,8 +33,11 @@ project_dirs = {
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
+
 project_dir = project_dirs[socket.gethostname()]
 checkpoints_dir = project_dir + "/checkpoints"
+results_dir = project_dir + "/chen_results"
 dataset_location = dataset_locations[socket.gethostname()]
 
 

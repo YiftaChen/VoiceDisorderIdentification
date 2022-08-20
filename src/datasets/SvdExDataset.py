@@ -97,7 +97,16 @@ def remove_duplicated_from_files_array_splits(files_array_splits):
 
     return filtered_list
 
-def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None,seed=None,**kwargs)->list():
+def get_single_pathology_data(data):
+    data_single_pathologies = {}    
+    for subject in data:
+        if len(data[subject].keys()) == 1:
+            data_single_pathologies[subject] = data[subject]       
+    
+    return data_single_pathologies
+
+
+def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None,seed=None,only_single_pathology=False,**kwargs)->list():
     assert sum(split)==1, f"Splits fraction array should sum up to 1"    
     files_array = []
     if hp["filter_gender"] != None:
@@ -120,9 +129,10 @@ def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None
             if pathology not in data[subject].keys():
                 data[subject][pathology]=[path]
             else:
-                data[subject][pathology]+=[path]
+                data[subject][pathology]+=[path]    
 
-    
+    if only_single_pathology:
+        data = get_single_pathology_data(data)    
     
     split = np.cumsum(split)
     split = [int(s * len(data.keys()))for s in split][:-1]
@@ -137,9 +147,6 @@ def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None
 
         split_filtered = remove_duplicated_from_files_array_splits(files_split)
         files_array_splits += [split_filtered]
-
-
-
 
     hp['seed']=seed
     splits = [SvdExtendedVoiceDataset(sp,hp,**kwargs) for sp in files_array_splits]

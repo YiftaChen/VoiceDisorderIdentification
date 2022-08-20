@@ -53,7 +53,8 @@ def train_model(config):
     torch.autograd.set_detect_anomaly(True)
     directory = core.params.dataset_location
     
-    datasets = create_datasets_split_by_subjects(directory,split=(0.8,0.1,0.1),hp=config,filter_gender=config['filter_gender'],classification_binary=config['binary_classification'])
+    datasets = create_datasets_split_by_subjects(directory,split=(0.8,0.1,0.1),hp=config,\
+        filter_gender=config['filter_gender'],classification_binary=config['binary_classification'],only_single_pathology=False)
     
 
     train_dataset = datasets[0]    
@@ -95,9 +96,9 @@ def train_model(config):
         ]
         ,lr=config["lr"],weight_decay = config['l2_reg'])
     hyper_params = {
-        'train_batch_size':64,
-        'vald_batch_size':64,
-        'test_batch_size':64,
+        'train_batch_size':128,
+        'vald_batch_size':128,
+        'test_batch_size':128,
         'num_workers':2,
         'epochs':100,
         'checkpoints':config['checkpoints'],

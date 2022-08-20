@@ -55,8 +55,8 @@ class MulticlassTrainer(BaseTrainer):
                                 columns = ["Not Sick Pred","Sick Pred"])
             plt.figure(figsize = (12,7))
             sn.heatmap(df_cm, annot=True,fmt='g')
-            os.makedirs(core.params.project_dir + f'/src/confusion_matrices',exist_ok=True)
-            plt.savefig(core.params.project_dir + f'/src/confusion_matrices/output_{epoch}_{classes[c]}.png')
+            os.makedirs(core.params.results_dir + f'/confusion_matrices',exist_ok=True)
+            plt.savefig(core.params.results_dir + f'/confusion_matrices/output_{epoch}_{classes[c]}.png')
             plt.close('all') 
 
     def log_precision_recall(self, valid_scores, valid_gt, epoch):      
@@ -67,16 +67,16 @@ class MulticlassTrainer(BaseTrainer):
             prec, rec, thresholds = precision_recall_curve(valid_gt_t[:,i], valid_proba_t[:,i])
             avg_prec = average_precision_score(valid_gt_t[:,i], valid_proba_t[:,i])         
 
-            os.makedirs(core.params.project_dir + f'/src/precision_recalls',exist_ok=True)
+            os.makedirs(core.params.results_dir + f'/precision_recalls',exist_ok=True)
             display = PrecisionRecallDisplay(recall=rec, precision=prec, average_precision=avg_prec)
-            display.plot().figure_.savefig(core.params.project_dir + f'/src/precision_recalls/output_{epoch}_{classes[i]}.png')  
+            display.plot().figure_.savefig(core.params.results_dir + f'/precision_recalls/output_{epoch}_{classes[i]}.png')  
 
-            os.makedirs(core.params.project_dir + f'/src/average_precision_logs',exist_ok=True)
+            os.makedirs(core.params.results_dir + f'/average_precision_logs',exist_ok=True)
             file_mode = 'a'
             if epoch == 0:
                 file_mode = 'w+'
             
-            f = open(core.params.project_dir + f'/src/average_precision_logs/{classes[i]}_log.txt',file_mode)
+            f = open(core.params.results_dir + f'/average_precision_logs/{classes[i]}_log.txt',file_mode)
             f.write(f'epoch_{epoch}: {str(avg_prec)}\n')
             f.close()
 
