@@ -240,3 +240,26 @@ class HubertMulticlassClassifier(HubertClassifier):
         
         classifications = torch.cat(classifications,axis=1)
         return classifications
+
+class HubertMulticlassSingleLabelClassifier(HubertClassifier):
+    def __init__(self,hp,configuration="base",out_dim=1,activation=SinusoidalActivation(),freeze_backend_grad=True,num_classes = 11) -> None:
+        super().__init__(hp,configuration,out_dim,activation,freeze_backend_grad)
+        self.classifier = FullyConnectedClassificationHead(self.input_dim,out_dim=num_classes)
+        # classifiers = []
+        # for class_id in range(num_classes):
+        #     classifiers+=[FullyConnectedClassificationHead(self.input_dim,out_dim=1)]
+        # self.classifier = nn.ModuleList(classifiers)
+
+
+    def forward(self,x):
+        x = x.reshape((x.shape[0],x.shape[-1]))
+        x = torchaudio.functional.resample(x, 50000, self.bundle.sample_rate)        
+        x,y = self.model(x)
+        # assert False, f"x shape {x.shape}"
+        # x = self.classifier(x)
+        # x = x.reshape(x.shape[0],-1)
+        # classifications = [classifier(x) for classifier in self.classifier]
+        
+        # classifications = torch.cat(classifications,axis=1)
+        classifications = self.classifier(x)
+        return classifications

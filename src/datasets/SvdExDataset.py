@@ -106,7 +106,7 @@ def get_single_pathology_data(data):
     return data_single_pathologies
 
 
-def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None,seed=None,only_single_pathology=False,**kwargs)->list():
+def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None,seed=None,only_single_pathology=False,oneHot=True,**kwargs)->list():
     assert sum(split)==1, f"Splits fraction array should sum up to 1"    
     files_array = []
     if hp["filter_gender"] != None:
@@ -149,20 +149,24 @@ def create_datasets_split_by_subjects(root_dir,split:tuple,hp,filter_gender=None
         files_array_splits += [split_filtered]
 
     hp['seed']=seed
-    splits = [SvdExtendedVoiceDataset(sp,hp,**kwargs) for sp in files_array_splits]
-    return splits
+    if oneHot:
+        return [SvdExtendedVoiceDataset(sp,hp,**kwargs) for sp in files_array_splits]            
+    else:
+        return [SvdExtendedVoiceDataset(sp,hp,label_transform=None,classification_single_class=True,**kwargs) for sp in files_array_splits]    
+        
 
 # TODO: make this inherit AudioFolderDataset
 class SvdExtendedVoiceDataset(Dataset):
     """Saarbruken blah blah"""
 
-    def __init__(self, files, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True):        
+    def __init__(self, files, hp,label_transform=default_label_transforms, class_definitions=None,classification_binary=True,classification_single_class=False):        
     # audiomentations = create_transformations(hp['augmentations'])
         data_transform = nn.Sequential(ToTensor(),PadWhiteNoise(50000),Truncate(50000))
         
         self.data_transform = data_transform
         self.label_transform = label_transform
         self.classification_binary = classification_binary
+        self.classification_single_class = classification_single_class
         self.class_definitions=class_definitions if class_definitions!= None else PathologiesToIndex# Placeholder for actual definitions
         self.seed = hp['seed']
         self.files = files
@@ -193,10 +197,13 @@ class SvdExtendedVoiceDataset(Dataset):
             classification_index = [self.class_definitions[index] for index in self.files[index][1]]
         if self.data_transform != None:
             data = self.data_transform(data)
+
         if self.label_transform != None and not self.classification_binary:
             label = self.label_transform(classification_index)
         if self.classification_binary:
             label = classification_index!=0
+        if self.classification_single_class:
+            label = classification_index[0]
         return {'data':data, 'sampling_rate':samplerate,'classification':label}
 
 class SvdCutOffShort(SvdExtendedVoiceDataset):

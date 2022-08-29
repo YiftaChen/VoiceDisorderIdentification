@@ -11,6 +11,53 @@ import numpy as np
 from sklearn.metrics import multilabel_confusion_matrix, precision_recall_curve, PrecisionRecallDisplay, average_precision_score, f1_score, confusion_matrix, ConfusionMatrixDisplay, precision_recall_fscore_support
 # from math import prod
 
+class MultiClassSingleLabelTrainer(BaseTrainer):
+    def __init__(self, datasets, model, optimizer, hyper_params, early_stop=..., device=None, verbose=False, logResults=True, confusion_mat_every=5, classes_amount=10, criterion = None) -> None:
+        super().__init__(datasets, model, optimizer, hyper_params, early_stop, device, verbose, logResults, confusion_mat_every)
+        self.classes_amount = classes_amount      
+        if criterion == None:
+            self.criterion = nn.CrossEntropyLoss()   
+        else:
+            self.criterion = criterion   
+
+    def train_batch(self, sample) -> BatchResult:        
+        x = sample['data'].to(device=self.device)
+        y = sample['classification'].squeeze().to(device=self.device)
+        self.optimizer.zero_grad()
+        outputs = self.model(x)        
+        loss = self.criterion(outputs,y)
+        loss.backward()
+        self.optimizer.step()
+        
+        predictions = torch.argmax(outputs, dim=1)
+
+        len_predictions = torch.numel(y)
+        accuracy = torch.sum(predictions==y)/len_predictions      
+        return BatchResult(predictions.cpu().detach().numpy(),outputs.cpu().detach().numpy(),loss,accuracy)
+
+    def validate_batch(self, sample) -> BatchResult:
+        x = sample['data'].to(device=self.device)
+        y = sample['classification'].squeeze().to(device=self.device)
+        accuracy = 0.0
+        with torch.no_grad():
+            outputs = self.model(x)
+            loss = self.criterion(outputs,y)            
+            predictions = torch.argmax(outputs, dim=1)
+            len_predictions = torch.numel(y)
+            accuracy = torch.sum(predictions==y)/len_predictions             
+            return BatchResult(predictions.cpu().detach().numpy(),outputs.cpu().detach().numpy(),loss,accuracy)
+
+    def process_valid_results(self, valid_pred, valid_scores, valid_gt, epoch):
+        classes = list(core.params.PathologiesToIndex.keys())
+
+        cf_mat = confusion_matrix(valid_gt, valid_pred)        
+        fig = ConfusionMatrixDisplay(cf_mat).plot().figure_        
+        os.makedirs(core.params.results_dir + f'/singleLabel_confusion_matrices',exist_ok=True)
+        fig.savefig(core.params.results_dir + f'/singleLabel_confusion_matrices/output_{epoch}.png')
+
+
+    
+
 class MulticlassTrainer(BaseTrainer):
     def __init__(self, datasets, model, optimizer, hyper_params, early_stop=float('inf'), device=None, verbose=False, logResults=True, criterion=None,classes_amount=11, confusion_mat_every=5) -> None:
         super().__init__(datasets, model, optimizer, hyper_params, early_stop, device, verbose, logResults,confusion_mat_every)   
