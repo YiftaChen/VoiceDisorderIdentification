@@ -2,12 +2,13 @@ from trainer.BaseTrainer import BaseTrainer,BatchResult
 import torch
 import torch.nn as nn
 import os
+import csv
 import matplotlib.pyplot as plt
 import seaborn as sn
 import core
 import pandas as pd
 import numpy as np
-from sklearn.metrics import multilabel_confusion_matrix, precision_recall_curve, PrecisionRecallDisplay, average_precision_score
+from sklearn.metrics import multilabel_confusion_matrix, precision_recall_curve, PrecisionRecallDisplay, average_precision_score, f1_score, confusion_matrix, ConfusionMatrixDisplay, precision_recall_fscore_support
 # from math import prod
 
 class MulticlassTrainer(BaseTrainer):
@@ -46,10 +47,12 @@ class MulticlassTrainer(BaseTrainer):
             accuracy = torch.sum(predictions==y)/len_predictions             
             return BatchResult(predictions.cpu().detach().numpy(),outputs.cpu().detach().numpy(),loss,accuracy)
 
+
     def log_confusion_matrix(self, valid_pred, valid_gt, epoch):        
         classes = list(core.params.PathologiesToIndex.keys())
         cf_matrix = multilabel_confusion_matrix(valid_gt, valid_pred)
         # assert False, f"shape of cf_matrix {cf_matrix.shape}"
+
         for c in range(cf_matrix.shape[0]):
             df_cm = pd.DataFrame(cf_matrix[c], index = ["Not Sick GT","Sick GT"],
                                 columns = ["Not Sick Pred","Sick Pred"])
@@ -80,9 +83,40 @@ class MulticlassTrainer(BaseTrainer):
             f.write(f'epoch_{epoch}: {str(avg_prec)}\n')
             f.close()
 
+    def log_f1_scores(self, valid_pred, valid_gt, epoch):
+        f1_scores = f1_score(valid_gt, valid_pred, average=None)        
 
-    def process_valid_results(self, valid_pred, valid_scores, valid_gt, epoch):
-        self.log_precision_recall(valid_scores, valid_gt, epoch)
+        classes = list(core.params.PathologiesToIndex.keys())
+        for i in range(self.classes_amount):            
+            os.makedirs(core.params.results_dir + f'/f1_scores',exist_ok=True)            
+            file_mode = 'a'
+            if epoch == 0:
+                file_mode = 'w+'
+            
+            with open(core.params.results_dir + f'/f1_scores/{classes[i]}_log.txt',file_mode) as f:
+                f.write(f'epoch_{epoch}: {str(f1_scores[i])}\n')
+
+    def log_precsion_recall_fscore(self, valid_pred, valid_gt, epoch):
+        classes = list(core.params.PathologiesToIndex.keys())
+        os.makedirs(core.params.results_dir + f'/precision_recall_fscores',exist_ok=True)
+
+        valid_pred_t = np.array(valid_pred)
+        valid_gt_t = np.array(valid_gt)        
+
+        for i in range(self.classes_amount):
+            prec, rec, fscore, _ = precision_recall_fscore_support(valid_gt_t[:,i], valid_pred_t[:,i],average='binary')  
+
+            file_mode = 'a'
+            if epoch == 0:
+                file_mode = 'w+'
+            
+            with open(core.params.results_dir + f'/precision_recall_fscores/{classes[i]}_log.txt',file_mode) as f:                
+                writer = csv.writer(f)
+                writer.writerow([prec,rec,fscore])
+
+
+    def process_valid_results(self, valid_pred, valid_scores, valid_gt, epoch):        
+        self.log_precsion_recall_fscore(valid_pred, valid_gt, epoch)        
 
         if epoch % self.confusion_mat_every == 0:
             self.log_confusion_matrix(valid_pred, valid_gt, epoch)
