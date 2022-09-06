@@ -11,6 +11,86 @@ import numpy as np
 from sklearn.metrics import multilabel_confusion_matrix, precision_recall_curve, PrecisionRecallDisplay, average_precision_score, f1_score, confusion_matrix, ConfusionMatrixDisplay, precision_recall_fscore_support
 # from math import prod
 
+def plot_confusion_matrix(cm,
+                          target_names,
+                          title='Confusion matrix',
+                          cmap=None,
+                          normalize=True):
+    """
+    given a sklearn confusion matrix (cm), make a nice plot
+
+    Arguments
+    ---------
+    cm:           confusion matrix from sklearn.metrics.confusion_matrix
+
+    target_names: given classification classes such as [0, 1, 2]
+                  the class names, for example: ['high', 'medium', 'low']
+
+    title:        the text to display at the top of the matrix
+
+    cmap:         the gradient of the values displayed from matplotlib.pyplot.cm
+                  see http://matplotlib.org/examples/color/colormaps_reference.html
+                  plt.get_cmap('jet') or plt.cm.Blues
+
+    normalize:    If False, plot the raw numbers
+                  If True, plot the proportions
+
+    Usage
+    -----
+    plot_confusion_matrix(cm           = cm,                  # confusion matrix created by
+                                                              # sklearn.metrics.confusion_matrix
+                          normalize    = True,                # show proportions
+                          target_names = y_labels_vals,       # list of names of the classes
+                          title        = best_estimator_name) # title of graph
+
+    Citiation
+    ---------
+    http://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
+
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import itertools
+
+    accuracy = np.trace(cm) / np.sum(cm).astype('float')
+    misclass = 1 - accuracy
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        cm = cm * 100
+
+    if cmap is None:
+        cmap = plt.get_cmap('Blues')
+
+    plt.figure(figsize=(16, 12))
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+
+    if target_names is not None:
+        tick_marks = np.arange(len(target_names))
+        plt.xticks(tick_marks, target_names, rotation=45)
+        plt.yticks(tick_marks, target_names)  
+
+
+    thresh = cm.max() / 1.5 if normalize else cm.max() / 2
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        if normalize:
+            plt.text(j, i, "{:0.2f}".format(cm[i, j]),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+        else:
+            plt.text(j, i, "{:,}".format(cm[i, j]),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label\naccuracy={:0.2f}; misclass={:0.2f}'.format(accuracy, misclass))
+    return plt
+
+
 class MultiClassSingleLabelTrainer(BaseTrainer):
     def __init__(self, datasets, model, optimizer, hyper_params, early_stop=..., device=None, verbose=False, logResults=True, confusion_mat_every=5, classes_amount=10, criterion = None) -> None:
         super().__init__(datasets, model, optimizer, hyper_params, early_stop, device, verbose, logResults, confusion_mat_every)
@@ -51,9 +131,10 @@ class MultiClassSingleLabelTrainer(BaseTrainer):
         classes = list(core.params.PathologiesToIndex.keys())
 
         cf_mat = confusion_matrix(valid_gt, valid_pred)        
-        fig = ConfusionMatrixDisplay(cf_mat).plot().figure_        
+        # fig = ConfusionMatrixDisplay(cf_mat,classes).plot().figure_  
+        plt = plot_confusion_matrix(cf_mat, classes[1:])      
         os.makedirs(core.params.results_dir + f'/singleLabel_confusion_matrices',exist_ok=True)
-        fig.savefig(core.params.results_dir + f'/singleLabel_confusion_matrices/output_{epoch}.png')
+        plt.savefig(core.params.results_dir + f'/singleLabel_confusion_matrices/output_{epoch}.png')
 
 
     
@@ -101,9 +182,20 @@ class MulticlassTrainer(BaseTrainer):
         # assert False, f"shape of cf_matrix {cf_matrix.shape}"
 
         for c in range(cf_matrix.shape[0]):
-            df_cm = pd.DataFrame(cf_matrix[c], index = ["Not Sick GT","Sick GT"],
+            cf = cf_matrix[c]
+            summed = cf.sum(axis=1)
+            gt_not_sick = summed[0]
+            gt_sick = summed[1]
+            cf = cf + 0.0
+            cf_pre = np.zeros_like(cf)
+            cf_pre[0,:] = (cf[0,:]/summed[0])*100
+            cf_pre[1,:] = (cf[1,:]/summed[1])*100
+            cf_pre = cf_pre.round(2)
+
+            df_cm = pd.DataFrame(cf_pre, index = [f"Not Sick GT ({gt_not_sick})",f"Sick GT ({gt_sick})"],
                                 columns = ["Not Sick Pred","Sick Pred"])
-            plt.figure(figsize = (12,7))
+            plt.figure(figsize = (10,7))
+            plt.rc('font', size=20)
             sn.heatmap(df_cm, annot=True,fmt='g')
             os.makedirs(core.params.results_dir + f'/confusion_matrices',exist_ok=True)
             plt.savefig(core.params.results_dir + f'/confusion_matrices/output_{epoch}_{classes[c]}.png')
