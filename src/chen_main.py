@@ -68,6 +68,13 @@ def train_singleLabel_model(config):
     print('valid_data_size')
     print(valid_data_size)
 
+    valid_dataset = datasets[2]
+    valid_data_bins,valid_data_size = get_metadata_of_dataset(valid_dataset,is_data_oneHot=False)
+    print('test_data_bins')
+    print(valid_data_bins)
+    print('test_data_size')
+    print(valid_data_size)
+
     model = HubertMulticlassSingleLabelClassifier(config, freeze_backend_grad=False,num_classes=11).to(device="cuda:0")         
 
     train_weights = (train_data_size/(train_data_bins + 1e-7)).to(device="cuda:0")         

@@ -136,6 +136,15 @@ class MultiClassSingleLabelTrainer(BaseTrainer):
         os.makedirs(core.params.results_dir + f'/singleLabel_confusion_matrices',exist_ok=True)
         plt.savefig(core.params.results_dir + f'/singleLabel_confusion_matrices/output_{epoch}.png')
 
+    def process_test_results(self, valid_pred, valid_scores, valid_gt, epoch):
+        classes = list(core.params.PathologiesToIndex.keys())
+
+        cf_mat = confusion_matrix(valid_gt, valid_pred)        
+        # fig = ConfusionMatrixDisplay(cf_mat,classes).plot().figure_  
+        plt = plot_confusion_matrix(cf_mat, classes[1:])      
+        os.makedirs(core.params.results_dir + f'/singleLabel_confusion_matrices',exist_ok=True)
+        plt.savefig(core.params.results_dir + f'/singleLabel_confusion_matrices/output_test_{epoch}.png')
+
 
     
 

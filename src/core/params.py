@@ -23,12 +23,14 @@ import socket
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ CHEN CONFIG ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-dataset_locations = {    
+dataset_locations = {
+    "sipl-gpu40-u.staff.technion.ac.il":"/home/chenka@staff.technion.ac.il/Desktop/SVD",
     "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/SVD"
 }
 
 project_dirs = {
-    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/VoiceDisorderIdentification",    
+    "sipl-gpu40-u.staff.technion.ac.il":"/home/chenka@staff.technion.ac.il/VoiceDisorderIdentification",
+    "sipl-gpu2-u.staff.technion.ac.il":"/home/chenka/VoiceDisorderIdentification"
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -70,6 +70,9 @@ class BaseTrainer(object):
     def process_valid_results(self, valid_pred, valid_scores, valid_gt, epoch):
         pass
 
+    def process_test_results(self, valid_pred, valid_scores, valid_gt, epoch):
+        pass
+
     def train(self):
         train_losses = []        
         train_accuracies = []
@@ -112,6 +115,7 @@ class BaseTrainer(object):
                 vald_loss = 0.0
 
                 self.model.eval()
+                # validation
                 with tqdm(self.val_set,disable=self.disableTQDM) as t:
                         for idx,sample in enumerate(t):                            
                             batchRes = self.validate_batch(sample)
@@ -127,7 +131,32 @@ class BaseTrainer(object):
                             vald_losses += [loss]
                             t.set_description(f"validation epoch {epoch}, validation loss is {loss.item()}, Accuracy {accuracy*100}%")            
                 
-                self.process_valid_results(vald_predictions, vald_scores, vald_true, epoch)                  
+                self.process_valid_results(vald_predictions, vald_scores, vald_true, epoch) 
+                # test
+                test_accuracies = []   
+                test_losses = []    
+                test_predictions = []
+                test_scores = []
+                test_true = []
+                test_sample_count = 0
+                test_loss = 0.0
+
+                with tqdm(self.test_set,disable=self.disableTQDM) as t:
+                        for idx,sample in enumerate(t):                            
+                            batchRes = self.validate_batch(sample)
+                            test_sample_count += sample['data'].shape[0]
+                            accuracy = batchRes.accuracy.cpu().detach()
+                            loss = batchRes.loss.cpu().detach()
+                            test_predictions.extend(batchRes.predictions)
+                            test_scores.extend(batchRes.scores)
+                            test_true.extend(sample['classification'].cpu().detach().numpy())
+                            test_loss+=loss
+
+                            test_accuracies += [accuracy]                            
+                            test_losses += [loss]
+                            t.set_description(f"test epoch {epoch}, test loss is {loss.item()}, Accuracy {accuracy*100}%")            
+                
+                self.process_test_results(test_predictions, test_scores, test_true, epoch)                  
 
                 accuracy = np.array(vald_accuracies).mean()               
                 loss = np.array(vald_losses).mean()
@@ -145,8 +174,8 @@ class BaseTrainer(object):
                 pbar_epochs.set_description(f"validation epoch {epoch}, train acc {'{:.2f}'.format(epoch_accuracy.item())}, validation acc {'{:.2f}'.format(accuracy.item())}")            
 
                 # if (runs_without_improv>=self.early_stop):
-                    # vald_losses += [vald_loss]
-                    # return self.model,train_losses,vald_loss, train_accuracies    
+                #     vald_losses += [vald_loss]
+                #     return self.model,train_losses,vald_loss, train_accuracies, vald_accuracies  
 
                 vald_losses += [vald_loss]
 
